@@ -47,7 +47,7 @@ La [matriz de permisos](requerimientos.md#matriz-de-permisos) define las ubicaci
 1. El actor selecciona producto, origen, destino y cantidad.
 2. El sistema valida que las ubicaciones sean distintas y que el actor pueda operar en ambas.
 3. El sistema comprueba las existencias en origen. Guarda el movimiento y las dos variaciones de saldo en una sola transacción.
-4. El actor puede consultar el movimiento desde el historial de cada ubicación a la que tenga acceso.
+4. El actor puede consultar el mismo identificador de traslado en los historiales autorizados, con una cantidad negativa en origen y positiva en destino.
 
 **Resultado alternativo.** Si falla la validación o la transacción, ambas ubicaciones conservan sus existencias previas.
 

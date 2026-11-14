@@ -46,6 +46,8 @@ El modelo muestra las relaciones del núcleo. El esquema físico definirá tipos
 
 ## Secuencia de un traslado
 
+La transacción bloquea las filas de stock de ambas ubicaciones en orden de ID antes de aplicar el descuento. Así, los traslados en sentidos opuestos toman los bloqueos en el mismo orden.
+
 ```mermaid
 sequenceDiagram
     actor U as Usuario
@@ -59,6 +61,7 @@ sequenceDiagram
     C->>C: Comprueba permisos y datos del traslado
     alt Solicitud válida y autorizada
         C->>D: Inicia la transacción
+        C->>D: Bloquea las filas de stock en orden de ubicación
         C->>D: Intenta descontar en origen con saldo suficiente
         alt Descuento aplicado y escritura completa
             C->>D: Incrementa destino y guarda el movimiento

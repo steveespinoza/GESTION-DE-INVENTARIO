@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react';
 import { request } from './api';
 
-const movementLabels = { receipt: 'Entrada', opening: 'Saldo inicial', issue: 'Salida' };
+const movementLabels = { receipt: 'Entrada', opening: 'Saldo inicial', issue: 'Salida', transfer: 'Traslado' };
+const movementEndpoints = {
+  receipt: '/inventory/receipts', opening: '/inventory/receipts',
+  issue: '/inventory/issues', transfer: '/inventory/transfers',
+};
 const numberFormat = new Intl.NumberFormat('es-PE', { maximumFractionDigits: 3 });
 const variationFormat = new Intl.NumberFormat('es-PE', { maximumFractionDigits: 3, signDisplay: 'always' });
 const dateFormat = new Intl.DateTimeFormat('es-PE', { dateStyle: 'medium', timeZone: 'UTC' });
@@ -14,10 +18,11 @@ function localDate() {
   return `${now.getFullYear()}-${month}-${day}`;
 }
 
-function MovementForm({ products, actor, busy, onSubmit }) {
+function MovementForm({ products, origin, destinations, actor, busy, onSubmit }) {
   const [kind, setKind] = useState('receipt');
   const isIssue = kind === 'issue';
-  const action = isIssue ? 'Registrar salida' : 'Registrar entrada';
+  const isTransfer = kind === 'transfer';
+  const action = `Registrar ${movementLabels[kind].toLowerCase()}`;
   return (
     <form className="panel movement-form" onSubmit={onSubmit} aria-labelledby="movement-title">
       <h2 id="movement-title">Registrar movimiento</h2>
@@ -27,8 +32,20 @@ function MovementForm({ products, actor, busy, onSubmit }) {
             <option value="receipt">Entrada</option>
             {actor.role === 'admin' && <option value="opening">Saldo inicial</option>}
             <option value="issue">Salida</option>
+            {destinations.length > 0 && <option value="transfer">Traslado</option>}
           </select>
         </label>
+        {isTransfer && (
+          <>
+            <p className="muted">Origen · {origin.name}</p>
+            <label>Ubicación de destino
+              <select key={origin.id} name="destinationId" required defaultValue="">
+                <option value="" disabled>Selecciona el destino</option>
+                {destinations.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+              </select>
+            </label>
+          </>
+        )}
         <label>Producto
           <select name="productId" required defaultValue="">
             <option value="" disabled>Selecciona un producto</option>
@@ -42,7 +59,7 @@ function MovementForm({ products, actor, busy, onSubmit }) {
           <label>Fecha del movimiento<input type="date" name="movementDate" required defaultValue={localDate()} /></label>
         </div>
         <label>Referencia <span className="muted">(opcional)</span>
-          <input name="reference" maxLength={120} placeholder={isIssue ? 'Ej. orden de entrega' : 'Ej. guía de recepción'} />
+          <input name="reference" maxLength={120} placeholder={isIssue || isTransfer ? 'Ej. orden de entrega' : 'Ej. guía de recepción'} />
         </label>
         <button className="primary">{busy ? 'Registrando…' : action}</button>
       </fieldset>
@@ -89,6 +106,7 @@ function History({ movements, hasMore, onFilter }) {
             <option value="receipt">Entrada</option>
             <option value="opening">Saldo inicial</option>
             <option value="issue">Salida</option>
+            <option value="transfer">Traslado</option>
           </select>
         </label>
         <button className="secondary">Filtrar</button>
@@ -101,9 +119,9 @@ function History({ movements, hasMore, onFilter }) {
               {movements.map((item) => (
                 <tr key={item.id}>
                   <td>{dateFormat.format(new Date(item.movementDate))}</td>
-                  <td><span className="movement-kind">{movementLabels[item.kind]}</span></td>
+                  <td><span className="movement-kind">{movementLabels[item.kind]}{item.kind === 'transfer' && ` #${item.id}`}</span></td>
                   <td>{item.product}</td>
-                  <td className={`numeric stock-value${item.kind === 'issue' ? ' outgoing' : ''}`}>{variationFormat.format(item.quantity)} <span>{item.unit}</span></td>
+                  <td className={`numeric stock-value${item.quantity.startsWith('-') ? ' outgoing' : ''}`}>{variationFormat.format(item.quantity)} <span>{item.unit}</span></td>
                   <td>{item.actor}</td>
                   <td>{item.reference || '—'}</td>
                   <td>{timestampFormat.format(new Date(item.recordedAt))}</td>
@@ -129,6 +147,7 @@ export function Inventory({ actor, onLogout, onExpired }) {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [queryError, setQueryError] = useState('');
+  const origin = options?.locations.find((item) => String(item.id) === locationId);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -165,15 +184,16 @@ export function Inventory({ actor, onLogout, onExpired }) {
     event.preventDefault();
     const form = event.currentTarget;
     const values = Object.fromEntries(new FormData(form));
-    const isIssue = values.kind === 'issue';
+    const { destinationId, ...movement } = values;
     setBusy(true);
     setError('');
     setNotice('');
     try {
-      const result = await request(isIssue ? '/inventory/issues' : '/inventory/receipts', {
+      const result = await request(movementEndpoints[values.kind], {
         method: 'POST',
         body: {
-          ...values,
+          ...movement,
+          ...(destinationId && { destinationId: Number(destinationId) }),
           productId: Number(values.productId),
           locationId: Number(locationId),
           quantity: values.quantity.trim().replace(',', '.'),
@@ -181,13 +201,14 @@ export function Inventory({ actor, onLogout, onExpired }) {
       });
       form.elements.quantity.value = '';
       form.elements.reference.value = '';
-      setNotice(`${movementLabels[values.kind]} #${result.id} ${values.kind === 'opening' ? 'registrado' : 'registrada'}.`);
+      const participle = ['opening', 'transfer'].includes(values.kind) ? 'registrado' : 'registrada';
+      setNotice(`${movementLabels[values.kind]} #${result.id} ${participle}.`);
       setRefresh((value) => value + 1);
     } catch (failure) {
       if (failure.status === 401) onExpired();
       else {
         setError(failure.message);
-        if (isIssue && failure.status === 409) setRefresh((value) => value + 1);
+        if (failure.status === 409) setRefresh((value) => value + 1);
       }
     } finally {
       setBusy(false);
@@ -230,10 +251,11 @@ export function Inventory({ actor, onLogout, onExpired }) {
         {queryError && <p className="notice error" role="alert">{queryError}</p>}
         {!options && !error && <p role="status">Cargando ubicaciones…</p>}
         {options?.locations.length === 0 && <p className="notice">No tienes ubicaciones asignadas.</p>}
-        {locationId && (
+        {origin && (
           <div aria-busy={loading}>
             <div className="dashboard">
-              <MovementForm products={options.products} actor={actor} busy={busy} onSubmit={register} />
+              <MovementForm products={options.products} origin={origin} actor={actor} busy={busy}
+                onSubmit={register} destinations={options.locations.filter((item) => item.id !== origin.id)} />
               <Stock balances={inventory?.balances ?? []} />
             </div>
             <History movements={inventory?.movements ?? []} hasMore={inventory?.hasMore} onFilter={applyFilters} />

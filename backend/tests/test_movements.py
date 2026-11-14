@@ -196,3 +196,88 @@ def test_failed_issue_movement_rolls_back_debit(app):
     inventory = client.get("/api/inventory/locations/1").json
     assert inventory["balances"][0]["quantity"] == "10.000"
     assert [item["kind"] for item in inventory["movements"]] == ["receipt"]
+
+
+def transfer(**overrides):
+    return receipt(destinationId=2, **overrides)
+
+
+def test_transfer_is_one_movement_visible_in_both_locations(app):
+    client = app.test_client()
+    login(client)
+    assert client.post("/api/inventory/receipts", json=receipt()).status_code == 201
+    transferred = client.post("/api/inventory/transfers", json=transfer(quantity="30"))
+    assert transferred.status_code == 201
+    assert transferred.json["balance"] == "70.000"
+    assert client.post("/api/inventory/issues", json=receipt(locationId=2, quantity="10")).status_code == 201
+
+    origin = client.get("/api/inventory/locations/1?kind=transfer").json
+    destination = client.get("/api/inventory/locations/2?kind=transfer").json
+    assert origin["balances"][0]["quantity"] == "70.000"
+    assert destination["balances"][0]["quantity"] == "20.000"
+    [debit] = origin["movements"]
+    [credit] = destination["movements"]
+    assert debit["id"] == credit["id"] == transferred.json["id"]
+    assert debit["quantity"] == "-30.000"
+    assert credit["quantity"] == "30.000"
+
+
+def test_rejected_transfer_preserves_both_locations(app):
+    client = app.test_client()
+    login(client)
+    assert client.post("/api/inventory/receipts", json=receipt(quantity="10")).status_code == 201
+    assert client.post("/api/inventory/transfers", json=transfer(quantity="11")).status_code == 409
+    assert client.post("/api/inventory/transfers", json=transfer(locationId=2)).status_code == 400
+    login(client, "operador-demo")
+    assert client.post("/api/inventory/transfers", json=transfer()).status_code == 403
+    assert client.post("/api/inventory/transfers", json=receipt(
+        locationId=2, destinationId=1
+    )).status_code == 403
+    login(client)
+    origin = client.get("/api/inventory/locations/1").json
+    assert origin["balances"][0]["quantity"] == "10.000"
+    assert [movement["kind"] for movement in origin["movements"]] == ["receipt"]
+    assert client.get("/api/inventory/locations/2").json == {
+        "balances": [], "movements": [], "hasMore": False,
+    }
+
+
+def test_destination_failure_rolls_back_transfer(app):
+    client = app.test_client()
+    login(client)
+    assert client.post("/api/inventory/receipts", json=receipt(quantity="10")).status_code == 201
+    assert client.post("/api/inventory/receipts", json=receipt(
+        locationId=2, quantity="999999999999999.999"
+    )).status_code == 201
+    assert client.post("/api/inventory/transfers", json=transfer(quantity="1")).status_code == 409
+    for location_id, quantity in ((1, "10.000"), (2, "999999999999999.999")):
+        data = client.get(f"/api/inventory/locations/{location_id}").json
+        assert data["balances"][0]["quantity"] == quantity
+        assert [movement["kind"] for movement in data["movements"]] == ["receipt"]
+
+
+def test_concurrent_transfers_in_opposite_directions(app):
+    client = app.test_client()
+    login(client)
+    for location_id in (1, 2):
+        assert client.post("/api/inventory/receipts", json=receipt(
+            locationId=location_id, quantity="10"
+        )).status_code == 201
+
+    ready = Barrier(2, timeout=5)
+
+    def send(pair):
+        origin, destination = pair
+        worker = app.test_client()
+        login(worker)
+        ready.wait()
+        return worker.post("/api/inventory/transfers", json=receipt(
+            locationId=origin, destinationId=destination, quantity="8"
+        )).status_code
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        assert list(executor.map(send, [(1, 2), (2, 1)])) == [201, 201]
+    for location_id in (1, 2):
+        data = client.get(f"/api/inventory/locations/{location_id}?kind=transfer").json
+        assert data["balances"][0]["quantity"] == "10.000"
+        assert sorted(item["quantity"] for item in data["movements"]) == ["-8.000", "8.000"]
