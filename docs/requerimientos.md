@@ -12,7 +12,7 @@ Definí el alcance inicial para una empresa con varias ubicaciones de inventario
 | Registrar entradas y salidas | Todas las ubicaciones | Ubicaciones asignadas |
 | Registrar traslados | Entre ubicaciones de la instalación | Requiere acceso a origen y destino |
 
-El saldo inicial usa el flujo de entrada. La carga inicial y sus permisos específicos se detallarán antes de implementar ese flujo.
+El administrador registra el saldo inicial como una entrada de tipo **Saldo inicial**. La fecha del movimiento es obligatoria. El sistema registra automáticamente la fecha y hora de registro. La referencia es opcional.
 
 ## Requerimientos funcionales
 
@@ -31,7 +31,7 @@ El saldo inicial usa el flujo de entrada. La carga inicial y sus permisos espec�
 ## Reglas de integridad
 
 - **RI-01.** La API comprueba la identidad, el rol y el alcance por ubicación. Un rechazo por permisos conserva los datos.
-- **RI-02.** La cantidad de un movimiento debe ser positiva y finita. Un traslado requiere dos ubicaciones distintas.
+- **RI-02.** La cantidad de un movimiento debe ser positiva y finita y admite hasta tres decimales. Un traslado requiere dos ubicaciones distintas.
 - **RI-03.** El saldo se valida al aplicar el descuento. Si dos salidas concurrentes solicitan 8 unidades sobre un saldo de 10, se confirma una y quedan 2.
 - **RI-04.** Cada movimiento y sus cambios de saldo se confirman en una sola transacción. Si falla un paso del traslado, se conservan los saldos y el historial previos.
 - **RI-05.** El saldo de un producto en una ubicación coincide con la suma de las variaciones registradas para esa combinación.
@@ -39,9 +39,3 @@ El saldo inicial usa el flujo de entrada. La carga inicial y sus permisos espec�
 ## Alcance posterior
 
 Dejé como ampliaciones los pedidos y aprobaciones, compras y proveedores, FIFO y reportes económicos, exportaciones, jerarquías de categorías y administración maestra. Los ajustes, las reversiones, la conciliación y el autoajuste quedan fuera de esta versión por la premisa del inventario.
-
-## Decisiones de detalle pendientes
-
-- Procedimiento de carga del saldo inicial y permisos específicos de ese flujo.
-- Precisión de las cantidades por unidad de medida.
-- Campos de fecha y referencia obligatorios en cada movimiento.
