@@ -5,7 +5,7 @@ from decimal import Decimal
 from .access import require_location
 from .errors import RequestError
 from .movement_repository import (
-    decrease_stock, increase_stock, lock_transfer_stock, product_exists, save_movement,
+    decrease_stock, increase_stock, lock_movement_product, lock_transfer_stock, save_movement,
 )
 
 
@@ -34,7 +34,7 @@ def register_movement(connection, actor, *, product_id, location_id, kind, quant
         raise RequestError("Ingresa una fecha de movimiento válida.") from None
     if not isinstance(reference, str) or len(reference.strip()) > 120:
         raise RequestError("La referencia admite hasta 120 caracteres.")
-    if not product_exists(connection, product_id):
+    if not lock_movement_product(connection, product_id):
         raise RequestError("El producto seleccionado no existe.", 404)
 
     if kind == "transfer":

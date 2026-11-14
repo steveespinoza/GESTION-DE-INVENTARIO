@@ -1,49 +1,11 @@
-import os
 from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
-from uuid import uuid4
 
 import psycopg
 import pytest
-from psycopg import sql
-from psycopg.conninfo import make_conninfo
 
-from inventory import create_app
 from inventory.errors import RequestError
 from inventory.movements import parse_quantity
-
-DEMO_PASSWORD = "inventario-prueba-local"
-
-
-@pytest.fixture
-def app():
-    database_url = os.environ.get("TEST_DATABASE_URL")
-    if not database_url:
-        pytest.skip("Configura TEST_DATABASE_URL para ejecutar las pruebas de PostgreSQL.")
-    schema_name = f"test_movements_{uuid4().hex}"
-    schema = sql.Identifier(schema_name)
-    with psycopg.connect(database_url, autocommit=True) as connection:
-        connection.execute(sql.SQL("CREATE SCHEMA {}").format(schema))
-        try:
-            app = create_app({
-                "DATABASE_URL": make_conninfo(database_url, options=f"-c search_path={schema_name}"),
-                "SECRET_KEY": "test-only",
-                "SESSION_COOKIE_SECURE": False,
-                "TESTING": True,
-            })
-            runner = app.test_cli_runner()
-            for command in (["migrate"], ["migrate"], ["seed-demo", "--password", DEMO_PASSWORD]):
-                result = runner.invoke(args=command)
-                assert result.exit_code == 0, result.output or repr(result.exception)
-            yield app
-        finally:
-            connection.execute(sql.SQL("DROP SCHEMA {} CASCADE").format(schema))
-
-
-def login(client, username="admin-demo"):
-    result = client.post("/api/session", json={"username": username, "password": DEMO_PASSWORD})
-    assert result.status_code == 200
-
 
 def receipt(**overrides):
     return {
@@ -59,7 +21,7 @@ def test_invalid_quantities(value):
         parse_quantity(value)
 
 
-def test_receipt_updates_balance_and_history(app):
+def test_receipt_updates_balance_and_history(app, login):
     client = app.test_client()
     login(client)
     created = client.post("/api/inventory/receipts", json=receipt(kind="opening"))
@@ -80,7 +42,7 @@ def test_receipt_updates_balance_and_history(app):
     assert client.get("/api/inventory/locations/2").json["movements"] == []
 
 
-def test_operator_cannot_write_outside_scope_or_open_stock(app):
+def test_operator_cannot_write_outside_scope_or_open_stock(app, login):
     client = app.test_client()
     assert client.post("/api/inventory/receipts", json=receipt()).status_code == 401
     login(client, "operador-demo")
@@ -98,7 +60,7 @@ def test_operator_cannot_write_outside_scope_or_open_stock(app):
     assert len(client.get("/api/inventory/locations/2").json["movements"]) == 1
 
 
-def test_failed_stock_write_rolls_back_movement(app):
+def test_failed_stock_write_rolls_back_movement(app, login):
     client = app.test_client()
     login(client)
     assert client.post("/api/inventory/receipts", json=receipt(
@@ -112,7 +74,7 @@ def test_failed_stock_write_rolls_back_movement(app):
         assert connection.execute("SELECT count(*) FROM movements").fetchone() == (1,)
 
 
-def test_concurrent_receipts_keep_both_quantities(app):
+def test_concurrent_receipts_keep_both_quantities(app, login):
     def register(quantity):
         client = app.test_client()
         login(client)
@@ -127,7 +89,7 @@ def test_concurrent_receipts_keep_both_quantities(app):
     assert len(inventory["movements"]) == 2
 
 
-def test_issue_updates_balance_and_history(app):
+def test_issue_updates_balance_and_history(app, login):
     client = app.test_client()
     login(client)
     assert client.post("/api/inventory/receipts", json=receipt(quantity="10.125")).status_code == 201
@@ -143,7 +105,7 @@ def test_issue_updates_balance_and_history(app):
     assert client.post("/api/inventory/issues", json=receipt(quantity="2")).json["balance"] == "0.000"
 
 
-def test_rejected_issues_leave_stock_and_history_intact(app):
+def test_rejected_issues_leave_stock_and_history_intact(app, login):
     client = app.test_client()
     login(client)
     assert client.post("/api/inventory/receipts", json=receipt(quantity="10")).status_code == 201
@@ -159,7 +121,7 @@ def test_rejected_issues_leave_stock_and_history_intact(app):
     assert [item["kind"] for item in inventory["movements"]] == ["receipt"]
 
 
-def test_concurrent_issues_cannot_overdraw_stock(app):
+def test_concurrent_issues_cannot_overdraw_stock(app, login):
     client = app.test_client()
     login(client, "operador-demo")
     assert client.post("/api/inventory/receipts", json=receipt(
@@ -183,7 +145,7 @@ def test_concurrent_issues_cannot_overdraw_stock(app):
     assert [item["quantity"] for item in inventory["movements"]] == ["-8.000", "10.000"]
 
 
-def test_failed_issue_movement_rolls_back_debit(app):
+def test_failed_issue_movement_rolls_back_debit(app, login):
     client = app.test_client()
     login(client)
     assert client.post("/api/inventory/receipts", json=receipt(quantity="10")).status_code == 201
@@ -202,7 +164,7 @@ def transfer(**overrides):
     return receipt(destinationId=2, **overrides)
 
 
-def test_transfer_is_one_movement_visible_in_both_locations(app):
+def test_transfer_is_one_movement_visible_in_both_locations(app, login):
     client = app.test_client()
     login(client)
     assert client.post("/api/inventory/receipts", json=receipt()).status_code == 201
@@ -222,7 +184,7 @@ def test_transfer_is_one_movement_visible_in_both_locations(app):
     assert credit["quantity"] == "30.000"
 
 
-def test_rejected_transfer_preserves_both_locations(app):
+def test_rejected_transfer_preserves_both_locations(app, login):
     client = app.test_client()
     login(client)
     assert client.post("/api/inventory/receipts", json=receipt(quantity="10")).status_code == 201
@@ -242,7 +204,7 @@ def test_rejected_transfer_preserves_both_locations(app):
     }
 
 
-def test_destination_failure_rolls_back_transfer(app):
+def test_destination_failure_rolls_back_transfer(app, login):
     client = app.test_client()
     login(client)
     assert client.post("/api/inventory/receipts", json=receipt(quantity="10")).status_code == 201
@@ -256,7 +218,7 @@ def test_destination_failure_rolls_back_transfer(app):
         assert [movement["kind"] for movement in data["movements"]] == ["receipt"]
 
 
-def test_concurrent_transfers_in_opposite_directions(app):
+def test_concurrent_transfers_in_opposite_directions(app, login):
     client = app.test_client()
     login(client)
     for location_id in (1, 2):

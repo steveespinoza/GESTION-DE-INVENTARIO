@@ -136,7 +136,7 @@ function History({ movements, hasMore, onFilter }) {
   );
 }
 
-export function Inventory({ actor, onLogout, onExpired }) {
+export function Inventory({ actor, onExpired }) {
   const [options, setOptions] = useState(null);
   const [locationId, setLocationId] = useState('');
   const [inventory, setInventory] = useState(null);
@@ -223,46 +223,38 @@ export function Inventory({ actor, onLogout, onExpired }) {
   }
 
   return (
-    <>
-      <header className="topbar">
-        <div className="topbar-inner">
-          <span className="wordmark"><span aria-hidden="true">▦</span> Inventario</span>
-          <div className="user"><span>{actor.username}</span><button className="quiet" onClick={onLogout}>Cerrar sesión</button></div>
-        </div>
-      </header>
-      <main className="workspace">
-        <div className="workspace-heading">
-          <h1>Inventario por ubicación</h1>
-          {options?.locations.length > 0 && (
-            <label className="location">Ubicación
-              <select value={locationId} disabled={busy} onChange={(event) => {
-                setLocationId(event.target.value);
-                setInventory(null);
-                setError('');
-                setNotice('');
-              }}>
-                {options.locations.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-              </select>
-            </label>
-          )}
-        </div>
-        {error && <p className="notice error" role="alert">{error}</p>}
-        {notice && <p className="notice success" role="status">{notice}</p>}
-        {queryError && <p className="notice error" role="alert">{queryError}</p>}
-        {!options && !error && <p role="status">Cargando ubicaciones…</p>}
-        {options?.locations.length === 0 && <p className="notice">No tienes ubicaciones asignadas.</p>}
-        {origin && (
-          <div aria-busy={loading}>
-            <div className="dashboard">
-              <MovementForm products={options.products} origin={origin} actor={actor} busy={busy}
-                onSubmit={register} destinations={options.locations.filter((item) => item.id !== origin.id)} />
-              <Stock balances={inventory?.balances ?? []} />
-            </div>
-            <History movements={inventory?.movements ?? []} hasMore={inventory?.hasMore} onFilter={applyFilters} />
-            {loading && <p className="muted" role="status">Actualizando inventario…</p>}
-          </div>
+    <main className="workspace">
+      <div className="workspace-heading">
+        <h1>Inventario por ubicación</h1>
+        {options?.locations.length > 0 && (
+          <label className="location">Ubicación
+            <select value={locationId} disabled={busy} onChange={(event) => {
+              setLocationId(event.target.value);
+              setInventory(null);
+              setError('');
+              setNotice('');
+            }}>
+              {options.locations.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+            </select>
+          </label>
         )}
-      </main>
-    </>
+      </div>
+      {error && <p className="notice error" role="alert">{error}</p>}
+      {notice && <p className="notice success" role="status">{notice}</p>}
+      {queryError && <p className="notice error" role="alert">{queryError}</p>}
+      {!options && !error && <p role="status">Cargando ubicaciones…</p>}
+      {options?.locations.length === 0 && <p className="notice">No tienes ubicaciones asignadas.</p>}
+      {origin && (
+        <div aria-busy={loading}>
+          <div className="dashboard">
+            <MovementForm products={options.products} origin={origin} actor={actor} busy={busy}
+              onSubmit={register} destinations={options.locations.filter((item) => item.id !== origin.id)} />
+            <Stock balances={inventory?.balances ?? []} />
+          </div>
+          <History movements={inventory?.movements ?? []} hasMore={inventory?.hasMore} onFilter={applyFilters} />
+          {loading && <p className="muted" role="status">Actualizando inventario…</p>}
+        </div>
+      )}
+    </main>
   );
 }
