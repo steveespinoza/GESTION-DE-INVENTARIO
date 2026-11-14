@@ -5,11 +5,23 @@ const variationFormat = new Intl.NumberFormat('es-PE', { maximumFractionDigits: 
 const dateFormat = new Intl.DateTimeFormat('es-PE', { dateStyle: 'medium', timeZone: 'UTC' });
 const timestampFormat = new Intl.DateTimeFormat('es-PE', { dateStyle: 'short', timeStyle: 'short' });
 
-export function History({ movements, hasMore, filters, page, onFilter, onPageChange }) {
+const views = [
+  ['incoming', 'Entradas'],
+  ['issue', 'Salidas'],
+  ['transfer', 'Traslados'],
+];
+
+export function History({ movements, hasMore, filters, page, onFilter, onPageChange, view, onViewChange }) {
   const selectedFilters = new URLSearchParams(filters);
   return (
     <section className="panel history" aria-labelledby="history-title">
       <h2 id="history-title" className="visually-hidden">Historial de movimientos</h2>
+      <nav className="history-views" aria-label="Vistas del historial">
+        {views.map(([id, label]) => (
+          <button key={id} type="button" className={view === id ? 'primary' : 'secondary'}
+            aria-pressed={view === id} onClick={() => onViewChange(id)}>{label}</button>
+        ))}
+      </nav>
       <form className="filters" onSubmit={onFilter} aria-label="Filtrar historial">
         <label className="history-search">Buscar movimientos
           <input type="search" name="q" maxLength={120} defaultValue={selectedFilters.get('q') ?? ''}
@@ -17,15 +29,6 @@ export function History({ movements, hasMore, filters, page, onFilter, onPageCha
         </label>
         <label>Desde<input type="date" name="from" defaultValue={selectedFilters.get('from') ?? ''} /></label>
         <label>Hasta<input type="date" name="to" defaultValue={selectedFilters.get('to') ?? ''} /></label>
-        <label>Tipo
-          <select name="kind" defaultValue={selectedFilters.get('kind') ?? ''}>
-            <option value="">Todos</option>
-            <option value="receipt">Entrada</option>
-            <option value="opening">Saldo inicial</option>
-            <option value="issue">Salida</option>
-            <option value="transfer">Traslado</option>
-          </select>
-        </label>
         <button className="secondary">Filtrar</button>
       </form>
       {movements && (movements.length === 0 ? <p className="empty">No hay movimientos para esta consulta.</p> : (

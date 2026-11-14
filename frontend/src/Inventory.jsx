@@ -22,6 +22,7 @@ export function Inventory({ actor, section, onExpired }) {
   const [locationId, setLocationId] = useState('');
   const [inventory, setInventory] = useState(null);
   const [filters, setFilters] = useState('');
+  const [historyView, setHistoryView] = useState('incoming');
   const [historyPage, setHistoryPage] = useState(null);
   const [refresh, setRefresh] = useState(0);
   const [accessRefresh, setAccessRefresh] = useState(0);
@@ -34,7 +35,7 @@ export function Inventory({ actor, section, onExpired }) {
   const destinations = options?.locations.filter((item) => item.id !== origin?.id) ?? [];
   const page = historyPage?.locationId === locationId ? historyPage.number : 1;
   const query = section === 'history'
-    ? `${filters}${filters ? '&' : ''}page=${page}&pageSize=${PAGE_SIZE}`
+    ? `${filters}${filters ? '&' : ''}kind=${historyView}&page=${page}&pageSize=${PAGE_SIZE}`
     : 'pageSize=1';
   const canQuery = section === 'stock' || section === 'history';
   const visibleInventory = inventory?.locationId === locationId && inventory?.query === query
@@ -159,7 +160,11 @@ export function Inventory({ actor, section, onExpired }) {
           {section === 'stock' && visibleInventory && <Stock key={locationId} balances={visibleInventory.balances} />}
           {section === 'history' && (
             <History movements={visibleInventory?.movements} hasMore={visibleInventory?.hasMore}
-              filters={filters} page={page} onFilter={applyFilters}
+              filters={filters} page={page} onFilter={applyFilters} view={historyView}
+              onViewChange={(view) => {
+                setHistoryView(view);
+                setHistoryPage(null);
+              }}
               onPageChange={(number) => setHistoryPage({ locationId, number })} />
           )}
           {section === 'register' && (

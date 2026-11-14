@@ -39,8 +39,9 @@ def location_inventory(location_id):
         raise RequestError("Ingresa una búsqueda válida de hasta 120 caracteres.")
 
     kind = request.args.get("kind") or None
-    if kind not in (None, "receipt", "opening", "issue", "transfer"):
+    if kind not in (None, "incoming", "receipt", "opening", "issue", "transfer"):
         raise RequestError("Selecciona un tipo de movimiento válido.")
+    kinds = ["receipt", "opening"] if kind == "incoming" else [kind] if kind else None
     try:
         start_date = date.fromisoformat(request.args["from"]) if request.args.get("from") else None
         end_date = date.fromisoformat(request.args["to"]) if request.args.get("to") else None
@@ -63,7 +64,7 @@ def location_inventory(location_id):
             FROM movement_details d JOIN movements m ON m.id = d.movement_id
             JOIN products p ON p.id = d.product_id JOIN users u ON u.id = m.actor_id
             WHERE d.location_id = %s
-              AND (%s::text IS NULL OR m.kind = %s)
+              AND (%s::text[] IS NULL OR m.kind = ANY(%s::text[]))
               AND (%s::date IS NULL OR m.movement_date >= %s)
               AND (%s::date IS NULL OR m.movement_date <= %s)
               AND (%s = '' OR strpos(
@@ -72,7 +73,7 @@ def location_inventory(location_id):
               ) > 0)
             ORDER BY m.id DESC, d.product_id
             LIMIT %s OFFSET %s
-        """, (location_id, kind, kind, start_date, start_date, end_date, end_date,
+        """, (location_id, kinds, kinds, start_date, start_date, end_date, end_date,
               search, search, page_size + 1, (page - 1) * page_size)).fetchall()
     for movement in movements:
         movement["recordedAt"] = movement["recordedAt"].isoformat()
