@@ -15,7 +15,10 @@ DEMO_PASSWORD = "inventario-prueba-local"
 def app():
     database_url = os.environ.get("TEST_DATABASE_URL")
     if not database_url:
-        pytest.skip("Configura TEST_DATABASE_URL para ejecutar las pruebas de PostgreSQL.")
+        message = "Configura TEST_DATABASE_URL para ejecutar las pruebas de PostgreSQL."
+        if os.environ.get("CI") == "true":
+            pytest.fail(message)
+        pytest.skip(message)
     schema_name = f"test_inventory_{uuid4().hex}"
     schema = sql.Identifier(schema_name)
     with psycopg.connect(database_url, autocommit=True) as connection:

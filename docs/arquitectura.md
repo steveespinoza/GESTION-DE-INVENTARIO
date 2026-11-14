@@ -83,6 +83,6 @@ sequenceDiagram
 - **Integración con PostgreSQL.** Comprobar SKU único, saldos bajo concurrencia y confirmación o reversión completa de una transacción de traslado.
 - **Extremo a extremo.** Recorrer desde la interfaz una entrada, un traslado y una salida. Comparar los saldos con el historial. [Recorrido de aceptación](casos-de-uso.md#recorrido-de-aceptación)
 
-## Despliegue de referencia
+## Ejecución local
 
-Planeo ejecutar React en Vercel, Flask en Render y PostgreSQL en Neon. La aplicación debe poder ejecutarse localmente con una base separada y datos ficticios para la demo y las pruebas.
+Flask sirve la API y el frontend compilado en el mismo origen local. PostgreSQL almacena los datos de la aplicación y las pruebas usan una base separada. Consulta la [guía de instalación local](instalacion-local.md).
