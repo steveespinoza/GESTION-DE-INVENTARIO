@@ -7,6 +7,32 @@ import pytest
 from inventory.errors import RequestError
 from inventory.movements import parse_quantity
 
+
+def test_history_pagination_includes_movements_beyond_the_default_limit(app, login):
+    with psycopg.connect(app.config["DATABASE_URL"]) as connection:
+        connection.execute("""
+            WITH inserted AS (
+                INSERT INTO movements (kind, actor_id, movement_date)
+                SELECT 'receipt', 1, DATE '2026-11-13' FROM generate_series(1, 101)
+                RETURNING id
+            )
+            INSERT INTO movement_details (movement_id, product_id, location_id, quantity)
+            SELECT id, 1, 1, 1 FROM inserted
+        """)
+        connection.execute("INSERT INTO stock VALUES (1, 1, 101)")
+
+    client = app.test_client()
+    login(client)
+    url = "/api/inventory/locations/1"
+    default_page = client.get(url).json
+    last_page = client.get(f"{url}?kind=receipt&pageSize=20&page=6").json
+    assert len(default_page["movements"]) == 100
+    assert default_page["hasMore"]
+    assert [row["id"] for row in last_page["movements"]] == [1]
+    assert not last_page["hasMore"]
+    assert client.get(f"{url}?pageSize=101").status_code == 400
+    assert client.get(f"{url}?page=0").status_code == 400
+
 def receipt(**overrides):
     return {
         "locationId": 1, "productId": 1, "kind": "receipt",
