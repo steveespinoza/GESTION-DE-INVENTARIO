@@ -21,7 +21,7 @@ La primera versión parte de que el saldo del sistema coincide con el inventario
 
 ## Estado
 
-La demo con React, Flask y PostgreSQL permite registrar entradas, saldos iniciales, salidas y traslados, y consultar el stock y el historial por ubicación. Desde **Administración** se pueden crear y editar productos y ubicaciones. Las cuentas y asignaciones aún se cargan con datos de demostración.
+La demo con React, Flask y PostgreSQL permite registrar entradas, saldos iniciales, salidas y traslados, y consultar el stock y el historial por ubicación. Desde **Administración** se pueden crear y editar productos, ubicaciones y usuarios.
 
 ## Ejecutar la demo local
 
@@ -65,6 +65,12 @@ Si ya tienes una base de la demo, ejecuta `flask --app inventory migrate` con su
 Con la cuenta de administrador, abre **Administración**. Crea un producto con SKU, nombre, unidad y categoría, y agrega un almacén desde **Ubicaciones**. Vuelve a **Movimientos**, selecciona el nuevo almacén y registra una entrada del producto para consultar su saldo e historial.
 
 Puedes cambiar el nombre de un almacén y editar los datos del producto desde sus listas. La unidad de medida se puede corregir hasta el primer movimiento del producto.
+
+### Asignar acceso a un almacén
+
+En **Administración → Usuarios**, crea un operador con una contraseña de al menos 12 caracteres y marca **Almacén A**. Inicia sesión con esa cuenta en otra ventana y registra una entrada. Desde la cuenta de administrador, edita el operador, desmarca A y marca B. Al volver a la ventana del operador, la lista de ubicaciones se actualiza. Las siguientes consultas y movimientos ya usan la nueva asignación, incluso con la sesión abierta.
+
+El rol administrador da acceso a todas las ubicaciones. Las asignaciones individuales se aplican al rol operador.
 
 ## Pruebas
 

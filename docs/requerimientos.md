@@ -19,7 +19,7 @@ El administrador registra el saldo inicial como una entrada de tipo **Saldo inic
 | ID | Requerimiento | Criterio de aceptación |
 |---|---|---|
 | RF-01 | Iniciar sesión. | Una cuenta con credenciales válidas puede iniciar sesión. Las credenciales inválidas no abren una sesión. |
-| RF-02 | Administrar usuarios, roles y acceso a ubicaciones. | Un administrador asigna una ubicación a un operador. El operador puede consultar esa ubicación y se le deniega el acceso a ubicaciones sin asignación. |
+| RF-02 | Administrar usuarios, roles y acceso a ubicaciones. | Un administrador lista, crea y edita cuentas. Si cambia un operador de A a B, las siguientes consultas y operaciones de esa sesión se autorizan en B y se rechazan en A. |
 | RF-03 | Administrar el catálogo de productos. | El administrador lista, crea y edita productos con nombre, SKU, unidad de medida y categoría. Los SKU duplicados se rechazan. La unidad queda fija desde el primer movimiento. |
 | RF-04 | Administrar ubicaciones de inventario. | El administrador lista, crea y renombra ubicaciones. El cambio de nombre conserva sus saldos e historial. |
 | RF-05 | Registrar saldo inicial y entradas. | Registrar una entrada de 100 unidades incrementa el saldo en 100 y crea un movimiento en el historial. Una entrada de saldo inicial se puede identificar como tal. |

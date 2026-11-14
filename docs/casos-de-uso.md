@@ -22,11 +22,13 @@ La [matriz de permisos](requerimientos.md#matriz-de-permisos) define las ubicaci
 
 1. El administrador registra las ubicaciones.
 2. Registra un producto con su SKU, unidad de medida y categoría.
-3. Configura las cuentas de los operadores y les asigna ubicaciones.
+3. Crea las cuentas en **Administración → Usuarios**. Define el rol y, para un operador, marca las ubicaciones en las que puede trabajar.
 
 **Resultado.** Los operadores pueden consultar y operar dentro de su alcance. Si el SKU ya existe, el registro del producto se rechaza.
 
 **Edición.** El administrador puede renombrar una ubicación sin perder sus movimientos ni saldos. Puede editar el producto. Si ya tiene movimientos, su unidad de medida se conserva para que el historial mantenga el significado de las cantidades.
+
+**Cambio de acceso.** Al editar un operador, las ubicaciones seleccionadas reemplazan sus asignaciones anteriores. La API usa las nuevas asignaciones en la siguiente solicitud de la sesión abierta.
 
 ## CU-03. Registrar una entrada
 
