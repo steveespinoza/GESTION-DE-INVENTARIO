@@ -20,9 +20,50 @@ La primera versión parte de que el saldo del sistema coincide con el inventario
 | [Casos de uso](docs/casos-de-uso.md) | Flujos de administración, registro de movimientos y consulta. |
 | [Arquitectura](docs/arquitectura.md) | Componentes, modelo conceptual de datos, secuencia de un traslado y estrategia de pruebas. |
 
-## Estado
+## Capturas del sistema
 
-El menú lateral separa **Stock**, **Registrar movimiento**, **Traslados** e **Historial**. Los administradores también tienen acceso directo a **Productos**, **Ubicaciones** y **Usuarios**. Las tablas muestran 20 filas por página. En el historial se puede buscar por producto, SKU, usuario o referencia y combinar la búsqueda con los filtros de fecha y tipo.
+Las capturas muestran la aplicación en ejecución local con datos ficticios.
+
+### Consultar existencias
+
+El menú lateral separa **Stock**, **Registrar movimiento**, **Traslados** e **Historial**. Los administradores también tienen acceso directo a **Productos**, **Ubicaciones** y **Usuarios**. Las tablas muestran 20 filas por página.
+
+![Stock del almacén A con el menú lateral y el buscador de productos](docs/imagenes/stock-actual.png)
+
+### Registrar y trasladar stock
+
+En **Registrar movimiento** se anotan entradas, salidas y saldos iniciales. Para mover stock entre almacenes, **Traslados** permite elegir el origen, el destino y la cantidad.
+
+<details>
+<summary>Ver el registro de una entrada</summary>
+
+![Formulario para registrar una entrada de 100 metros de cable en el almacén A](docs/imagenes/registro-movimiento.png)
+
+</details>
+
+<details>
+<summary>Ver el formulario de traslado</summary>
+
+![Formulario de traslado de 30 metros de cable del almacén A al almacén B](docs/imagenes/registrar-traslado.png)
+
+</details>
+
+### Revisar el historial
+
+En **Historial**, elige **Entradas**, **Salidas** o **Traslados**. La vista de Entradas incluye los saldos iniciales. En las tres vistas puedes buscar por producto, SKU, usuario o referencia y acotar los resultados por fecha.
+
+![Historial del almacén A con la vista de Traslados activa, el buscador y los filtros de fecha](docs/imagenes/historial-traslados.png)
+
+### Administrar accesos
+
+Desde **Usuarios**, un administrador puede cambiar el rol de una cuenta y asignar a cada operador los almacenes donde puede trabajar.
+
+<details>
+<summary>Ver la asignación de almacenes a un operador</summary>
+
+![Edición de un operador con acceso asignado al almacén B](docs/imagenes/permisos-usuarios.png)
+
+</details>
 
 ## Probar la aplicación
 
@@ -38,7 +79,7 @@ Abre `http://127.0.0.1:5000` e inicia sesión como `admin-demo` con la contrase�
 | Trasladar 30 m de A a B | 70 m | 30 m |
 | Registrar una salida de 10 m en B | 70 m | 20 m |
 
-Usa **Registrar movimiento** para la entrada y la salida, y **Traslados** para mover material entre almacenes. En **Historial**, el traslado tiene el mismo identificador en ambos almacenes. En A aparece como −30 m y en B como +30 m. Una salida de 21 m desde B debe rechazarse y conservar el saldo de 20 m. Con `operador-demo` puedes operar en B. Para registrar un traslado necesitas acceso a dos ubicaciones.
+Usa **Registrar movimiento** para la entrada y la salida, y **Traslados** para mover material entre almacenes. En **Historial**, abre la vista **Traslados** para comprobar que el movimiento tiene el mismo identificador en ambos almacenes. En A aparece como −30 m y en B como +30 m. Una salida de 21 m desde B debe rechazarse y conservar el saldo de 20 m. Con `operador-demo` puedes operar en B. Para registrar un traslado necesitas acceso a dos ubicaciones.
 
 ### Preparar tu propio catálogo
 
