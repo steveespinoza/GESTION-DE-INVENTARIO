@@ -27,6 +27,16 @@ def require_session(view):
     return authenticated
 
 
+def require_admin(view):
+    @require_session
+    @wraps(view)
+    def authorized(*args, **kwargs):
+        if g.actor["role"] != "admin":
+            raise RequestError("Esta acción requiere permisos de administrador.", 403)
+        return view(*args, **kwargs)
+    return authorized
+
+
 def visible_locations(connection, actor):
     if actor["role"] == "admin":
         return connection.execute("SELECT id, name FROM locations ORDER BY name").fetchall()

@@ -1,6 +1,7 @@
-def product_exists(connection, product_id):
+def lock_movement_product(connection, product_id):
+    # Serialize movement registration with changes to the product's unit.
     return connection.execute(
-        "SELECT 1 FROM products WHERE id = %s", (product_id,)
+        "SELECT 1 FROM products WHERE id = %s FOR SHARE", (product_id,)
     ).fetchone() is not None
 
 

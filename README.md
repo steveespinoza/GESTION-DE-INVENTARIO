@@ -21,7 +21,7 @@ La primera versión parte de que el saldo del sistema coincide con el inventario
 
 ## Estado
 
-La demo con React, Flask y PostgreSQL permite registrar entradas, saldos iniciales, salidas y traslados, y consultar el stock y el historial por ubicación. El catálogo y las cuentas se cargan con datos de demostración. Las pantallas de administración están pendientes.
+La demo con React, Flask y PostgreSQL permite registrar entradas, saldos iniciales, salidas y traslados, y consultar el stock y el historial por ubicación. Desde **Administración** se pueden crear y editar productos y ubicaciones. Las cuentas y asignaciones aún se cargan con datos de demostración.
 
 ## Ejecutar la demo local
 
@@ -59,6 +59,12 @@ Al consultar los historiales, el traslado tiene el mismo identificador en ambos 
 ![Stock de 20 metros en Almacén B con el traslado de entrada y la salida en el historial](docs/imagenes/traslado-demo.png)
 
 Si ya tienes una base de la demo, ejecuta `flask --app inventory migrate` con su URL para habilitar los traslados y conservar los registros existentes.
+
+### Preparar tu propio catálogo
+
+Con la cuenta de administrador, abre **Administración**. Crea un producto con SKU, nombre, unidad y categoría, y agrega un almacén desde **Ubicaciones**. Vuelve a **Movimientos**, selecciona el nuevo almacén y registra una entrada del producto para consultar su saldo e historial.
+
+Puedes cambiar el nombre de un almacén y editar los datos del producto desde sus listas. La unidad de medida se puede corregir hasta el primer movimiento del producto.
 
 ## Pruebas
 

@@ -6,6 +6,7 @@ from flask import Flask
 from werkzeug.exceptions import HTTPException
 
 from .access import auth
+from .administration import administration
 from .db import register_commands
 from .errors import RequestError
 from .routes import inventory
@@ -30,6 +31,7 @@ def create_app(config=None):
         raise RuntimeError("Configura SECRET_KEY y DATABASE_URL antes de iniciar Flask.")
 
     app.register_blueprint(auth)
+    app.register_blueprint(administration)
     app.register_blueprint(inventory)
     register_commands(app)
 

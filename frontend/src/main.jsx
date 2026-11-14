@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+import { Administration } from './Administration';
 import { request } from './api';
 import { Inventory } from './Inventory';
 import './styles.css';
@@ -40,6 +41,29 @@ function Login({ onLogin }) {
   );
 }
 
+function Workspace({ actor, onLogout, onExpired }) {
+  const [section, setSection] = useState('inventory');
+  return (
+    <>
+      <header className="topbar">
+        <div className="topbar-inner">
+          <span className="wordmark"><span aria-hidden="true">▦</span> Inventario</span>
+          {actor.role === 'admin' && (
+            <nav className="workspace-nav" aria-label="Navegación principal">
+              <button className="quiet" aria-pressed={section === 'inventory'} onClick={() => setSection('inventory')}>Movimientos</button>
+              <button className="quiet" aria-pressed={section === 'admin'} onClick={() => setSection('admin')}>Administración</button>
+            </nav>
+          )}
+          <div className="user"><span>{actor.username}</span><button className="quiet" onClick={onLogout}>Cerrar sesión</button></div>
+        </div>
+      </header>
+      {section === 'admin' && actor.role === 'admin'
+        ? <Administration onExpired={onExpired} />
+        : <Inventory actor={actor} onExpired={onExpired} />}
+    </>
+  );
+}
+
 function App() {
   const [actor, setActor] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -68,7 +92,7 @@ function App() {
     <>
       {error && <p className="notice error session-error" role="alert">{error}</p>}
       {actor
-        ? <Inventory actor={actor} onLogout={logout} onExpired={expireSession} />
+        ? <Workspace actor={actor} onLogout={logout} onExpired={expireSession} />
         : <Login onLogin={(user) => { setError(''); setActor(user); }} />}
     </>
   );

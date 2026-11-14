@@ -4,17 +4,13 @@ from flask import Blueprint, g, request
 from psycopg.errors import NumericValueOutOfRange
 
 from .access import require_location, require_session, visible_locations
+from .catalog import list_products
 from .db import database
 from .errors import RequestError
 from .movements import register_movement
+from .validation import parse_id
 
 inventory = Blueprint("inventory", __name__, url_prefix="/api/inventory")
-
-
-def parse_id(value):
-    if type(value) is not int or not 0 < value <= 2147483647:
-        raise RequestError("Selecciona una ubicación y un producto válidos.")
-    return value
 
 
 @inventory.get("/options")
@@ -22,9 +18,7 @@ def parse_id(value):
 def options():
     with database() as connection:
         locations = visible_locations(connection, g.actor)
-        products = connection.execute("""
-            SELECT id, sku, name, unit, category FROM products ORDER BY name
-        """).fetchall()
+        products = list_products(connection)
     return {"locations": locations, "products": products}
 
 

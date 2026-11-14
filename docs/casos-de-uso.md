@@ -26,6 +26,8 @@ La [matriz de permisos](requerimientos.md#matriz-de-permisos) define las ubicaci
 
 **Resultado.** Los operadores pueden consultar y operar dentro de su alcance. Si el SKU ya existe, el registro del producto se rechaza.
 
+**Edición.** El administrador puede renombrar una ubicación sin perder sus movimientos ni saldos. Puede editar el producto. Si ya tiene movimientos, su unidad de medida se conserva para que el historial mantenga el significado de las cantidades.
+
 ## CU-03. Registrar una entrada
 
 1. El actor selecciona producto y ubicación e indica la cantidad recibida y la fecha del movimiento. Puede añadir una referencia.
