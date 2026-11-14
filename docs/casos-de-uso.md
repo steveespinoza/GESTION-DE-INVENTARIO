@@ -1,0 +1,70 @@
+# Casos de uso
+
+La [matriz de permisos](requerimientos.md#matriz-de-permisos) define las ubicaciones accesibles para cada actor. Las referencias `RF` apuntan a los [requerimientos funcionales](requerimientos.md#requerimientos-funcionales).
+
+| Caso | Actor | Requerimientos |
+|---|---|---|
+| CU-01. Iniciar sesión | Administrador u operador | RF-01 |
+| CU-02. Preparar la operación | Administrador | RF-02, RF-03, RF-04 |
+| CU-03. Registrar una entrada | Administrador u operador autorizado | RF-05 |
+| CU-04. Registrar una salida | Administrador u operador autorizado | RF-06 |
+| CU-05. Trasladar existencias | Administrador u operador autorizado en ambas ubicaciones | RF-07 |
+| CU-06. Consultar stock e historial | Administrador u operador autorizado | RF-08, RF-09 |
+
+## CU-01. Iniciar sesión
+
+1. El usuario envía sus credenciales.
+2. El sistema las valida y abre la sesión con su rol y alcance de acceso.
+
+**Resultado alternativo.** Si las credenciales son inválidas, la sesión permanece cerrada.
+
+## CU-02. Preparar la operación
+
+1. El administrador registra las ubicaciones.
+2. Registra un producto con su SKU, unidad de medida y categoría.
+3. Configura las cuentas de los operadores y les asigna ubicaciones.
+
+**Resultado.** Los operadores pueden consultar y operar dentro de su alcance. Si el SKU ya existe, el registro del producto se rechaza.
+
+## CU-03. Registrar una entrada
+
+1. El actor selecciona producto y ubicación e indica la cantidad recibida y los datos del movimiento.
+2. El sistema valida el acceso y la cantidad.
+3. El sistema incrementa el saldo y registra la entrada con el actor de la sesión.
+
+**Resultado.** La cantidad aparece en el stock y la entrada en el historial. El saldo inicial sigue este flujo con una identificación propia.
+
+## CU-04. Registrar una salida
+
+1. El actor selecciona producto y ubicación e indica la cantidad entregada.
+2. El sistema valida el acceso y descuenta la cantidad si el saldo disponible la cubre.
+3. El sistema confirma la salida y muestra el saldo actualizado.
+
+**Resultado alternativo.** Si la cantidad es inválida o el saldo es insuficiente, se conservan el saldo y el historial previos.
+
+## CU-05. Trasladar existencias
+
+1. El actor selecciona producto, origen, destino y cantidad.
+2. El sistema valida que las ubicaciones sean distintas y que el actor pueda operar en ambas.
+3. El sistema comprueba las existencias en origen. Guarda el movimiento y las dos variaciones de saldo en una sola transacción.
+4. El actor puede consultar el movimiento desde el historial de cada ubicación a la que tenga acceso.
+
+**Resultado alternativo.** Si falla la validación o la transacción, ambas ubicaciones conservan sus existencias previas.
+
+## CU-06. Consultar stock e historial
+
+1. El actor selecciona una ubicación autorizada y consulta el saldo del producto.
+2. Abre el historial y puede acotarlo por fecha y tipo de movimiento.
+3. Revisa los registros para explicar la variación de existencias.
+
+**Resultado.** Cada consulta devuelve datos dentro del alcance del actor.
+
+## Recorrido de aceptación
+
+| Paso | Operación | Saldo en A | Saldo en B |
+|---|---|---:|---:|
+| 1 | Registrar 100 unidades en A | 100 | 0 |
+| 2 | Trasladar 30 unidades de A a B | 70 | 30 |
+| 3 | Retirar 10 unidades de B | 70 | 20 |
+
+El historial de A muestra la entrada y el traslado. El de B muestra el mismo traslado y la salida. Una salida de 21 unidades desde B debe rechazarse y conservar el saldo de 20.
