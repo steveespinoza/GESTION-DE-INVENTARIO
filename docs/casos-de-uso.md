@@ -37,8 +37,8 @@ La [matriz de permisos](requerimientos.md#matriz-de-permisos) define las ubicaci
 ## CU-04. Registrar una salida
 
 1. El actor selecciona producto y ubicación e indica la cantidad entregada.
-2. El sistema valida el acceso y descuenta la cantidad si el saldo disponible la cubre.
-3. El sistema confirma la salida y muestra el saldo actualizado.
+2. El sistema valida el acceso e intenta descontar la cantidad solo si el saldo disponible la cubre en ese momento.
+3. El sistema guarda la salida con una variación negativa en el historial y confirma el saldo actualizado en la misma transacción.
 
 **Resultado alternativo.** Si la cantidad es inválida o el saldo es insuficiente, se conservan el saldo y el historial previos.
 

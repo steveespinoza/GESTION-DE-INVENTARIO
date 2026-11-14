@@ -6,7 +6,7 @@ from psycopg.errors import NumericValueOutOfRange
 from .access import require_location, require_session, visible_locations
 from .db import database
 from .errors import RequestError
-from .receipts import register_receipt
+from .movements import register_movement
 
 inventory = Blueprint("inventory", __name__, url_prefix="/api/inventory")
 
@@ -33,7 +33,7 @@ def options():
 def location_inventory(location_id):
     parse_id(location_id)
     kind = request.args.get("kind") or None
-    if kind not in (None, "receipt", "opening"):
+    if kind not in (None, "receipt", "opening", "issue"):
         raise RequestError("Selecciona un tipo de movimiento válido.")
     try:
         start_date = date.fromisoformat(request.args["from"]) if request.args.get("from") else None
@@ -75,11 +75,27 @@ def create_receipt():
     body = request.get_json()
     if not isinstance(body, dict):
         raise RequestError("Envía los datos de la entrada.")
+    kind = body.get("kind")
+    if kind not in ("receipt", "opening"):
+        raise RequestError("Selecciona un tipo de entrada válido.")
+    return create_movement(body, kind)
+
+
+@inventory.post("/issues")
+@require_session
+def create_issue():
+    body = request.get_json()
+    if not isinstance(body, dict):
+        raise RequestError("Envía los datos de la salida.")
+    return create_movement(body, "issue")
+
+
+def create_movement(body, kind):
     try:
         with database() as connection:
-            result = register_receipt(
+            result = register_movement(
                 connection, g.actor, product_id=parse_id(body.get("productId")),
-                location_id=parse_id(body.get("locationId")), kind=body.get("kind"),
+                location_id=parse_id(body.get("locationId")), kind=kind,
                 quantity=body.get("quantity"), movement_date=body.get("movementDate"),
                 reference=body.get("reference", ""),
             )

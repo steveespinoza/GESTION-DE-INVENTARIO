@@ -1,5 +1,6 @@
 import os
 from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
 from uuid import uuid4
 
 import psycopg
@@ -9,7 +10,7 @@ from psycopg.conninfo import make_conninfo
 
 from inventory import create_app
 from inventory.errors import RequestError
-from inventory.receipts import parse_quantity
+from inventory.movements import parse_quantity
 
 DEMO_PASSWORD = "inventario-prueba-local"
 
@@ -19,7 +20,7 @@ def app():
     database_url = os.environ.get("TEST_DATABASE_URL")
     if not database_url:
         pytest.skip("Configura TEST_DATABASE_URL para ejecutar las pruebas de PostgreSQL.")
-    schema_name = f"test_receipts_{uuid4().hex}"
+    schema_name = f"test_movements_{uuid4().hex}"
     schema = sql.Identifier(schema_name)
     with psycopg.connect(database_url, autocommit=True) as connection:
         connection.execute(sql.SQL("CREATE SCHEMA {}").format(schema))
@@ -124,3 +125,74 @@ def test_concurrent_receipts_keep_both_quantities(app):
     inventory = client.get("/api/inventory/locations/1").json
     assert inventory["balances"][0]["quantity"] == "12.003"
     assert len(inventory["movements"]) == 2
+
+
+def test_issue_updates_balance_and_history(app):
+    client = app.test_client()
+    login(client)
+    assert client.post("/api/inventory/receipts", json=receipt(quantity="10.125")).status_code == 201
+    issued = client.post("/api/inventory/issues", json=receipt(quantity="8.125"))
+    assert issued.status_code == 201
+    assert issued.json["balance"] == "2.000"
+    inventory = client.get("/api/inventory/locations/1?kind=issue").json
+    [movement] = inventory["movements"]
+    assert movement["id"] == issued.json["id"]
+    assert movement["kind"] == "issue"
+    assert movement["quantity"] == "-8.125"
+    assert movement["actor"] == "admin-demo"
+    assert client.post("/api/inventory/issues", json=receipt(quantity="2")).json["balance"] == "0.000"
+
+
+def test_rejected_issues_leave_stock_and_history_intact(app):
+    client = app.test_client()
+    login(client)
+    assert client.post("/api/inventory/receipts", json=receipt(quantity="10")).status_code == 201
+    assert client.post("/api/inventory/issues", json=receipt(quantity="11")).status_code == 409
+    assert client.post("/api/inventory/issues", json=receipt(productId=2, quantity="1")).status_code == 409
+    assert client.post("/api/inventory/issues", json=receipt(quantity="-1")).status_code == 400
+    assert client.post("/api/inventory/receipts", json=receipt(kind="issue")).status_code == 400
+    login(client, "operador-demo")
+    assert client.post("/api/inventory/issues", json=receipt(quantity="1")).status_code == 403
+    login(client)
+    inventory = client.get("/api/inventory/locations/1").json
+    assert inventory["balances"][0]["quantity"] == "10.000"
+    assert [item["kind"] for item in inventory["movements"]] == ["receipt"]
+
+
+def test_concurrent_issues_cannot_overdraw_stock(app):
+    client = app.test_client()
+    login(client, "operador-demo")
+    assert client.post("/api/inventory/receipts", json=receipt(
+        locationId=2, quantity="10"
+    )).status_code == 201
+
+    ready = Barrier(2, timeout=5)
+
+    def issue(_):
+        worker = app.test_client()
+        login(worker, "operador-demo")
+        ready.wait()
+        return worker.post("/api/inventory/issues", json=receipt(
+            locationId=2, quantity="8"
+        )).status_code
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        assert sorted(executor.map(issue, range(2))) == [201, 409]
+    inventory = client.get("/api/inventory/locations/2").json
+    assert inventory["balances"][0]["quantity"] == "2.000"
+    assert [item["quantity"] for item in inventory["movements"]] == ["-8.000", "10.000"]
+
+
+def test_failed_issue_movement_rolls_back_debit(app):
+    client = app.test_client()
+    login(client)
+    assert client.post("/api/inventory/receipts", json=receipt(quantity="10")).status_code == 201
+    with psycopg.connect(app.config["DATABASE_URL"]) as connection:
+        connection.execute("ALTER TABLE movements ADD CHECK (kind <> 'issue')")
+
+    with pytest.raises(psycopg.errors.CheckViolation):
+        client.post("/api/inventory/issues", json=receipt(quantity="8"))
+
+    inventory = client.get("/api/inventory/locations/1").json
+    assert inventory["balances"][0]["quantity"] == "10.000"
+    assert [item["kind"] for item in inventory["movements"]] == ["receipt"]
