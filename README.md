@@ -56,6 +56,6 @@ El rol administrador da acceso a todas las ubicaciones. Las asignaciones individ
 
 ## Pruebas
 
-[GitHub Actions](https://github.com/steveespinoza/GESTION-DE-INVENTARIO/actions/workflows/ci.yml) compila React y ejecuta las pruebas de Flask con PostgreSQL 17 en los PR hacia `main` y en los cambios que llegan a esa rama. La base de CI se crea para cada ejecución.
+[GitHub Actions](https://github.com/steveespinoza/GESTION-DE-INVENTARIO/actions/workflows/ci.yml) compila React, ejecuta las pruebas de Flask y reproduce el recorrido de inventario en Chromium. Los trabajos se ejecutan en los PR hacia `main` y en los cambios que llegan a esa rama, con bases PostgreSQL 17 temporales.
 
-La suite comprueba permisos por ubicación, consistencia entre saldo e historial, descuentos concurrentes y el efecto de un fallo durante un traslado. Para ejecutarla en tu equipo, consulta [Ejecutar las pruebas](docs/instalacion-local.md#ejecutar-las-pruebas).
+La suite comprueba permisos por ubicación, consistencia entre saldo e historial, descuentos concurrentes y el efecto de un fallo durante un traslado. La prueba de navegador recorre la entrada, el traslado y la salida desde la interfaz. Para ejecutarlas en tu equipo, consulta [Ejecutar las pruebas](docs/instalacion-local.md#ejecutar-las-pruebas).

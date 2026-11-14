@@ -59,3 +59,15 @@ $env:TEST_DATABASE_URL = 'postgresql://usuario:clave@127.0.0.1:5432/inventario_t
 ```
 
 Las pruebas de integración crean un esquema temporal por caso y lo eliminan al terminar. Si aparecen pruebas omitidas, comprueba que `TEST_DATABASE_URL` esté definida en la ventana donde ejecutas pytest.
+
+### Prueba de navegador
+
+Con el frontend ya compilado y `TEST_DATABASE_URL` apuntando a la base de pruebas, ejecuta desde `backend`:
+
+```powershell
+..\.venv\Scripts\python.exe -m pip install -r requirements-e2e.txt
+..\.venv\Scripts\python.exe -m playwright install chromium
+..\.venv\Scripts\python.exe -m pytest -q -rs e2e
+```
+
+La prueba abre Chromium, levanta Flask en un puerto local libre y carga datos ficticios en un esquema temporal. Comprueba los saldos de 70 m en A y 20 m en B, el mismo ID de traslado en ambos historiales y el rechazo de una salida de 21 m desde B.
