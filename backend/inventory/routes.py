@@ -33,7 +33,7 @@ def options():
 def location_inventory(location_id):
     parse_id(location_id)
     kind = request.args.get("kind") or None
-    if kind not in (None, "receipt", "opening", "issue"):
+    if kind not in (None, "receipt", "opening", "issue", "transfer"):
         raise RequestError("Selecciona un tipo de movimiento válido.")
     try:
         start_date = date.fromisoformat(request.args["from"]) if request.args.get("from") else None
@@ -90,14 +90,23 @@ def create_issue():
     return create_movement(body, "issue")
 
 
-def create_movement(body, kind):
+@inventory.post("/transfers")
+@require_session
+def create_transfer():
+    body = request.get_json()
+    if not isinstance(body, dict):
+        raise RequestError("Envía los datos del traslado.")
+    return create_movement(body, "transfer", destination_id=parse_id(body.get("destinationId")))
+
+
+def create_movement(body, kind, *, destination_id=None):
     try:
         with database() as connection:
             result = register_movement(
                 connection, g.actor, product_id=parse_id(body.get("productId")),
                 location_id=parse_id(body.get("locationId")), kind=kind,
                 quantity=body.get("quantity"), movement_date=body.get("movementDate"),
-                reference=body.get("reference", ""),
+                reference=body.get("reference", ""), destination_id=destination_id,
             )
     except NumericValueOutOfRange:
         raise RequestError("El saldo resultante supera el máximo permitido.", 409) from None

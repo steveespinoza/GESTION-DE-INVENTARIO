@@ -21,9 +21,7 @@ La primera versión parte de que el saldo del sistema coincide con el inventario
 
 ## Estado
 
-La demo con React, Flask y PostgreSQL permite registrar entradas, saldos iniciales y salidas, y consultar el stock y el historial por ubicación. El catálogo y las cuentas se cargan con datos de demostración. Los traslados y las pantallas de administración están pendientes.
-
-![Entrada de 100 metros registrada en el almacén A, con stock e historial actualizados](docs/imagenes/entrada-demo.png)
+La demo con React, Flask y PostgreSQL permite registrar entradas, saldos iniciales, salidas y traslados, y consultar el stock y el historial por ubicación. El catálogo y las cuentas se cargan con datos de demostración. Las pantallas de administración están pendientes.
 
 ## Ejecutar la demo local
 
@@ -46,9 +44,21 @@ Set-Location backend
 ..\.venv\Scripts\python.exe -m flask --app inventory run
 ```
 
-Abre `http://127.0.0.1:5000` e inicia sesión como `admin-demo` con la contraseña que elegiste al cargar los datos. Selecciona **Almacén A** y **Cable eléctrico**. Registra una entrada de 100 m y luego una salida de 30 m. El saldo debe quedar en 70 m y el historial debe mostrar ambos movimientos. Una salida de 71 m debe rechazarse y conservar ese saldo. Con `operador-demo` puedes comprobar que solo aparece el almacén B.
+### Recorrido de inventario
 
-Si ya tienes la base de la demo de entradas, ejecuta `flask --app inventory migrate` con su URL para añadir las salidas y conservar los registros existentes.
+Abre `http://127.0.0.1:5000` e inicia sesión como `admin-demo` con la contraseña que elegiste al cargar los datos. En una base nueva, usa el producto **Cable eléctrico** para recorrer los tres movimientos.
+
+| Operación | Almacén A | Almacén B |
+|---|---:|---:|
+| Registrar una entrada de 100 m en A | 100 m | 0 m |
+| Trasladar 30 m de A a B | 70 m | 30 m |
+| Registrar una salida de 10 m en B | 70 m | 20 m |
+
+Al consultar los historiales, el traslado tiene el mismo identificador en ambos almacenes. En A aparece como −30 m y en B como +30 m. Una salida de 21 m desde B debe rechazarse y conservar el saldo de 20 m. Con `operador-demo` solo puedes operar en B, por lo que el formulario no ofrece la opción de traslado.
+
+![Stock de 20 metros en Almacén B con el traslado de entrada y la salida en el historial](docs/imagenes/traslado-demo.png)
+
+Si ya tienes una base de la demo, ejecuta `flask --app inventory migrate` con su URL para habilitar los traslados y conservar los registros existentes.
 
 ## Pruebas
 
@@ -59,4 +69,4 @@ $env:TEST_DATABASE_URL = 'postgresql://usuario:contraseña@localhost:5432/invent
 ..\.venv\Scripts\python.exe -m pytest -q
 ```
 
-La suite verifica permisos por ubicación, validación de cantidades y consistencia entre saldo e historial. También comprueba que solo una de dos salidas simultáneas de 8 unidades se confirme cuando hay 10 disponibles, y que un fallo al guardar el movimiento revierta el descuento. Las pruebas de integración crean un esquema temporal por caso y lo eliminan al terminar.
+La suite verifica permisos por ubicación, consistencia entre saldo e historial y descuentos concurrentes. En los traslados comprueba que el mismo movimiento aparezca en ambos historiales, que un fallo en destino revierta el descuento en origen y que dos traslados simultáneos en sentidos opuestos conserven los saldos esperados. Las pruebas de integración crean un esquema temporal por caso y lo eliminan al terminar.

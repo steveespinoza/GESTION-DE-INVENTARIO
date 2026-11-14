@@ -27,7 +27,7 @@ function Login({ onLogin }) {
       <div className="login-intro">
         <span className="wordmark"><span aria-hidden="true">▦</span> Inventario</span>
         <h1>Gestión de<br />inventario</h1>
-        <p>Registra entradas y salidas, y consulta las existencias de cada almacén.</p>
+        <p>Registra movimientos y consulta las existencias de cada almacén.</p>
       </div>
       <form className="panel login-panel" onSubmit={submit}>
         <h2>Iniciar sesión</h2>
