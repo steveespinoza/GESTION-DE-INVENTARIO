@@ -53,7 +53,11 @@ label input, label select { display: block; margin-top: .35rem; font-weight: 400
 .topbar-inner { display: flex; align-items: center; justify-content: space-between; gap: .75rem; max-width: 1240px; margin: 0 auto; padding: .85rem 1.5rem; }
 .workspace-nav, .resource-nav { display: flex; gap: .55rem; }
 .workspace-nav .quiet[aria-pressed='true'] { background: #284d41; border-color: #bbd8bd; }
-.resource-nav { margin-bottom: 1rem; }
+.resource-nav { margin-bottom: 1rem; flex-wrap: wrap; }
+.movement-form .location-assignments { margin: 0; gap: .45rem; }
+.location-assignments legend { font-size: .88rem; font-weight: 700; margin-bottom: .35rem; }
+.location-option { display: flex; align-items: center; gap: .5rem; font-weight: 400; }
+.location-option input { margin: 0; min-height: auto; width: auto; accent-color: var(--green); }
 .user { display: flex; align-items: center; gap: .85rem; font-size: .85rem; }
 .workspace { max-width: 1240px; margin: 0 auto; padding: 2rem 1.5rem 3rem; }
 .workspace-heading { display: flex; align-items: end; justify-content: space-between; gap: 1rem; margin-bottom: 1.35rem; }

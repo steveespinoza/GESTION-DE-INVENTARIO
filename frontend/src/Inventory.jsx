@@ -142,19 +142,22 @@ export function Inventory({ actor, onExpired }) {
   const [inventory, setInventory] = useState(null);
   const [filters, setFilters] = useState('');
   const [refresh, setRefresh] = useState(0);
+  const [accessRefresh, setAccessRefresh] = useState(0);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [queryError, setQueryError] = useState('');
   const origin = options?.locations.find((item) => String(item.id) === locationId);
+  const visibleInventory = inventory?.locationId === locationId ? inventory : null;
 
   useEffect(() => {
     const controller = new AbortController();
     request('/inventory/options', { signal: controller.signal })
       .then((data) => {
         setOptions(data);
-        setLocationId(String(data.locations[0]?.id ?? ''));
+        setLocationId((selected) => data.locations.some((item) => String(item.id) === selected)
+          ? selected : String(data.locations[0]?.id ?? ''));
       })
       .catch((failure) => {
         if (failure.name === 'AbortError') return;
@@ -162,7 +165,16 @@ export function Inventory({ actor, onExpired }) {
         else setError(failure.message);
       });
     return () => controller.abort();
-  }, [onExpired]);
+  }, [accessRefresh, onExpired]);
+
+  useEffect(() => {
+    function refreshOnFocus() {
+      setAccessRefresh((value) => value + 1);
+      setRefresh((value) => value + 1);
+    }
+    window.addEventListener('focus', refreshOnFocus);
+    return () => window.removeEventListener('focus', refreshOnFocus);
+  }, []);
 
   useEffect(() => {
     if (!locationId) return;
@@ -170,11 +182,17 @@ export function Inventory({ actor, onExpired }) {
     setLoading(true);
     setQueryError('');
     request(`/inventory/locations/${locationId}?${filters}`, { signal: controller.signal })
-      .then(setInventory)
+      .then((data) => setInventory({ ...data, locationId }))
       .catch((failure) => {
         if (failure.name === 'AbortError') return;
         if (failure.status === 401) onExpired();
-        else setQueryError(failure.message);
+        else {
+          setQueryError(failure.message);
+          if (failure.status === 403) {
+            setInventory(null);
+            setAccessRefresh((value) => value + 1);
+          }
+        }
       })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
@@ -208,6 +226,7 @@ export function Inventory({ actor, onExpired }) {
       if (failure.status === 401) onExpired();
       else {
         setError(failure.message);
+        if (failure.status === 403) setAccessRefresh((value) => value + 1);
         if (failure.status === 409) setRefresh((value) => value + 1);
       }
     } finally {
@@ -249,9 +268,9 @@ export function Inventory({ actor, onExpired }) {
           <div className="dashboard">
             <MovementForm products={options.products} origin={origin} actor={actor} busy={busy}
               onSubmit={register} destinations={options.locations.filter((item) => item.id !== origin.id)} />
-            <Stock balances={inventory?.balances ?? []} />
+          <Stock balances={visibleInventory?.balances ?? []} />
           </div>
-          <History movements={inventory?.movements ?? []} hasMore={inventory?.hasMore} onFilter={applyFilters} />
+        <History movements={visibleInventory?.movements ?? []} hasMore={visibleInventory?.hasMore} onFilter={applyFilters} />
           {loading && <p className="muted" role="status">Actualizando inventario…</p>}
         </div>
       )}

@@ -5,6 +5,7 @@ from .access import require_admin, visible_locations
 from .catalog import create_product, list_products, update_product
 from .db import database
 from .errors import RequestError
+from .users import list_users, save_user
 from .validation import parse_id
 
 administration = Blueprint("administration", __name__, url_prefix="/api/admin")
@@ -97,3 +98,49 @@ def edit_location(location_id):
         return location
     except UniqueViolation:
         raise RequestError("Ya existe una ubicación con ese nombre.", 409) from None
+
+
+@administration.get("/users")
+@require_admin
+def users():
+    with database() as connection:
+        return {
+            "users": list_users(connection),
+            "locations": visible_locations(connection, g.actor),
+        }
+
+
+@administration.post("/users")
+@require_admin
+def add_user():
+    return write_user(), 201
+
+
+@administration.put("/users/<int:user_id>")
+@require_admin
+def edit_user(user_id):
+    return write_user(parse_id(user_id))
+
+
+def write_user(user_id=None):
+    (username,) = read_fields(("username", "El usuario", 80))
+    body = request.get_json()
+    locations = body.get("locationIds")
+    if not isinstance(locations, list):
+        raise RequestError("Selecciona las ubicaciones del usuario.")
+    location_ids = sorted({parse_id(location_id) for location_id in locations})
+
+    password = body.get("password")
+    if user_id is None and not (
+        isinstance(password, str) and 12 <= len(password) <= 256 and password.strip()
+    ):
+        raise RequestError("La contraseña debe tener entre 12 y 256 caracteres.")
+
+    try:
+        with database() as connection:
+            return save_user(
+                connection, g.actor["id"], username=username, role=body.get("role"),
+                location_ids=location_ids, user_id=user_id, password=password,
+            )
+    except UniqueViolation:
+        raise RequestError("Ya existe una cuenta con ese usuario.", 409) from None

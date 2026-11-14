@@ -17,23 +17,65 @@ const resources = {
     singular: 'ubicación',
     fields: [{ key: 'name', label: 'Nombre', limit: 120 }],
   },
+  users: {
+    title: 'Usuarios',
+    singular: 'usuario',
+    fields: [{ key: 'username', label: 'Usuario', limit: 80 }],
+  },
 };
+
+function UserFields({ editing, locations }) {
+  const [role, setRole] = useState(editing?.role ?? 'operator');
+  return (
+    <>
+      {!editing && (
+        <label>Contraseña
+          <input name="password" type="password" autoComplete="new-password" required minLength={12} maxLength={256} />
+          <span className="muted">Al menos 12 caracteres.</span>
+        </label>
+      )}
+      <label>Rol
+        <select name="role" value={role} onChange={(event) => setRole(event.target.value)}>
+          <option value="operator">Operador</option>
+          <option value="admin">Administrador</option>
+        </select>
+      </label>
+      {role === 'operator' && (
+        <fieldset className="location-assignments">
+          <legend>Ubicaciones asignadas</legend>
+          {locations.length === 0 && <p className="muted">Aún no hay ubicaciones.</p>}
+          {locations.map(({ id, name }) => (
+            <label key={id} className="location-option">
+              <input type="checkbox" name="locationIds" value={id} defaultChecked={editing?.locationIds.includes(id)} />
+              {name}
+            </label>
+          ))}
+        </fieldset>
+      )}
+    </>
+  );
+}
 
 function ResourceEditor({ resource, onExpired }) {
   const { title, singular, fields } = resources[resource];
   const endpoint = `/admin/${resource}`;
   const [items, setItems] = useState(null);
+  const [locations, setLocations] = useState([]);
   const [editing, setEditing] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [formVersion, setFormVersion] = useState(0);
   const formTitle = editing ? `Editar ${singular}` : `Crear ${singular}`;
+  const isUsers = resource === 'users';
 
   useEffect(() => {
     const controller = new AbortController();
     request(endpoint, { signal: controller.signal })
-      .then((data) => setItems(data[resource]))
+      .then((data) => {
+        setItems(data[resource]);
+        if (data.locations && resource === 'users') setLocations(data.locations);
+      })
       .catch((failure) => {
         if (failure.name === 'AbortError') return;
         if (failure.status === 401) onExpired();
@@ -51,7 +93,9 @@ function ResourceEditor({ resource, onExpired }) {
 
   async function save(event) {
     event.preventDefault();
-    const body = Object.fromEntries(new FormData(event.currentTarget));
+    const form = new FormData(event.currentTarget);
+    const body = Object.fromEntries(form);
+    if (isUsers) body.locationIds = form.getAll('locationIds').map(Number);
     setBusy(true);
     setError('');
     setNotice('');
@@ -60,12 +104,13 @@ function ResourceEditor({ resource, onExpired }) {
         method: editing ? 'PUT' : 'POST',
         body,
       });
+      const label = (item) => item.name ?? item.username;
       setItems((current) => [
         ...current.filter((item) => item.id !== saved.id), saved,
-      ].sort((first, second) => first.name.localeCompare(second.name, 'es') || first.id - second.id));
+      ].sort((first, second) => label(first).localeCompare(label(second), 'es') || first.id - second.id));
       setEditing(null);
       setFormVersion((version) => version + 1);
-      setNotice(`Se guardó «${saved.name}».`);
+      setNotice(`Se guardó «${label(saved)}».`);
     } catch (failure) {
       if (failure.status === 401) onExpired();
       else setError(failure.message);
@@ -87,6 +132,7 @@ function ResourceEditor({ resource, onExpired }) {
                 <input name={key} required maxLength={limit} defaultValue={editing?.[key] ?? ''} />
               </label>
             ))}
+            {isUsers && <UserFields editing={editing} locations={locations} />}
             {error && items && <p className="notice error" role="alert">{error}</p>}
             <button className="primary">{busy ? 'Guardando…' : formTitle}</button>
             {editing && <button type="button" className="secondary" onClick={() => select(null)}>Cancelar edición</button>}
@@ -99,13 +145,23 @@ function ResourceEditor({ resource, onExpired }) {
           {items?.length > 0 && (
             <div className="table-wrap">
               <table>
-                <thead><tr>{fields.map(({ key, label }) => <th key={key}>{label}</th>)}<th>Acción</th></tr></thead>
+                <thead><tr>{fields.map(({ key, label }) => <th key={key}>{label}</th>)}
+                  {isUsers && <><th>Rol</th><th>Ubicaciones</th></>}
+                  <th>Acción</th></tr></thead>
                 <tbody>
                   {items.map((item) => (
                     <tr key={item.id}>
                       {fields.map(({ key }) => <td key={key}>{item[key]}</td>)}
+                      {isUsers && (
+                        <>
+                          <td>{item.role === 'admin' ? 'Administrador' : 'Operador'}</td>
+                          <td>{item.role === 'admin' ? 'Todas' : locations.filter(
+                            (location) => item.locationIds.includes(location.id),
+                          ).map((location) => location.name).join(', ') || 'Sin asignar'}</td>
+                        </>
+                      )}
                       <td><button type="button" className="secondary" disabled={busy} onClick={() => select(item)}
-                        aria-label={`Editar ${item.name}`}>Editar</button></td>
+                        aria-label={`Editar ${item.name ?? item.username}`}>Editar</button></td>
                     </tr>
                   ))}
                 </tbody>
