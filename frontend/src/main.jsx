@@ -41,26 +41,63 @@ function Login({ onLogin }) {
   );
 }
 
+const modules = [
+  ['stock', 'Stock'],
+  ['register', 'Registrar movimiento'],
+  ['transfer', 'Traslados'],
+  ['history', 'Historial'],
+];
+
+const adminModules = [
+  ['products', 'Productos'],
+  ['locations', 'Ubicaciones'],
+  ['users', 'Usuarios'],
+];
+
 function Workspace({ actor, onLogout, onExpired }) {
-  const [section, setSection] = useState('inventory');
+  const [section, setSection] = useState('stock');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const isAdmin = actor.role === 'admin';
+  const isAdminSection = adminModules.some(([id]) => id === section);
+  const activeSection = isAdminSection && !isAdmin ? 'stock' : section;
+
+  function renderOptions(options) {
+    return options.map(([id, label]) => (
+      <button key={id} type="button" className="quiet" aria-pressed={activeSection === id}
+        onClick={() => { setSection(id); setMenuOpen(false); }}>{label}</button>
+    ));
+  }
+
   return (
-    <>
-      <header className="topbar">
-        <div className="topbar-inner">
+    <div className="workspace-shell">
+      <aside className="sidebar">
+        <div className="sidebar-header">
           <span className="wordmark"><span aria-hidden="true">▦</span> Inventario</span>
-          {actor.role === 'admin' && (
-            <nav className="workspace-nav" aria-label="Navegación principal">
-              <button className="quiet" aria-pressed={section === 'inventory'} onClick={() => setSection('inventory')}>Movimientos</button>
-              <button className="quiet" aria-pressed={section === 'admin'} onClick={() => setSection('admin')}>Administración</button>
-            </nav>
-          )}
-          <div className="user"><span>{actor.username}</span><button className="quiet" onClick={onLogout}>Cerrar sesión</button></div>
+          <button type="button" className="quiet menu-toggle" aria-expanded={menuOpen}
+            aria-controls="sidebar-content" onClick={() => setMenuOpen(!menuOpen)}>Menú</button>
         </div>
-      </header>
-      {section === 'admin' && actor.role === 'admin'
-        ? <Administration onExpired={onExpired} />
-        : <Inventory actor={actor} onExpired={onExpired} />}
-    </>
+        <div id="sidebar-content" className={menuOpen ? 'sidebar-content is-open' : 'sidebar-content'}>
+          <nav className="workspace-nav" aria-label="Módulos">
+            {renderOptions(modules)}
+            {isAdmin && (
+              <div className="workspace-nav sidebar-admin" role="group" aria-labelledby="admin-label">
+                <span id="admin-label">Administración</span>
+                {renderOptions(adminModules)}
+              </div>
+            )}
+          </nav>
+          <div className="sidebar-account">
+            <span>{actor.username}</span>
+            <button type="button" className="quiet" onClick={onLogout}>Cerrar sesión</button>
+          </div>
+        </div>
+      </aside>
+      <div className="workspace-content">
+        {isAdminSection && isAdmin
+          ? <Administration resource={activeSection} onExpired={onExpired} />
+          : <Inventory actor={actor} section={activeSection} onExpired={onExpired} />}
+      </div>
+    </div>
   );
 }
 

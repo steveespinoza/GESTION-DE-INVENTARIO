@@ -22,7 +22,7 @@ La primera versión parte de que el saldo del sistema coincide con el inventario
 
 ## Estado
 
-La demo con React, Flask y PostgreSQL permite registrar entradas, saldos iniciales, salidas y traslados, y consultar el stock y el historial por ubicación. Desde **Administración** se pueden crear y editar productos, ubicaciones y usuarios.
+El menú lateral separa **Stock**, **Registrar movimiento**, **Traslados** e **Historial**. Los administradores también tienen acceso directo a **Productos**, **Ubicaciones** y **Usuarios**. Las tablas muestran 20 filas por página. En el historial se puede buscar por producto, SKU, usuario o referencia y combinar la búsqueda con los filtros de fecha y tipo.
 
 ## Probar la aplicación
 
@@ -38,19 +38,17 @@ Abre `http://127.0.0.1:5000` e inicia sesión como `admin-demo` con la contrase�
 | Trasladar 30 m de A a B | 70 m | 30 m |
 | Registrar una salida de 10 m en B | 70 m | 20 m |
 
-Al consultar los historiales, el traslado tiene el mismo identificador en ambos almacenes. En A aparece como −30 m y en B como +30 m. Una salida de 21 m desde B debe rechazarse y conservar el saldo de 20 m. Con `operador-demo` solo puedes operar en B, por lo que el formulario no ofrece la opción de traslado.
-
-![Stock de 20 metros en Almacén B con el traslado de entrada y la salida en el historial](docs/imagenes/traslado-demo.png)
+Usa **Registrar movimiento** para la entrada y la salida, y **Traslados** para mover material entre almacenes. En **Historial**, el traslado tiene el mismo identificador en ambos almacenes. En A aparece como −30 m y en B como +30 m. Una salida de 21 m desde B debe rechazarse y conservar el saldo de 20 m. Con `operador-demo` puedes operar en B. Para registrar un traslado necesitas acceso a dos ubicaciones.
 
 ### Preparar tu propio catálogo
 
-Con la cuenta de administrador, abre **Administración**. Crea un producto con SKU, nombre, unidad y categoría, y agrega un almacén desde **Ubicaciones**. Vuelve a **Movimientos**, selecciona el nuevo almacén y registra una entrada del producto para consultar su saldo e historial.
+Con la cuenta de administrador, abre **Productos** en el menú lateral. Crea un producto con SKU, nombre, unidad y categoría, y agrega un almacén desde **Ubicaciones**. Abre **Registrar movimiento**, selecciona el nuevo almacén y registra una entrada del producto para consultar su saldo e historial.
 
 Puedes cambiar el nombre de un almacén y editar los datos del producto desde sus listas. La unidad de medida se puede corregir hasta el primer movimiento del producto.
 
 ### Asignar acceso a un almacén
 
-En **Administración → Usuarios**, crea un operador con una contraseña de al menos 12 caracteres y marca **Almacén A**. Inicia sesión con esa cuenta en otra ventana y registra una entrada. Desde la cuenta de administrador, edita el operador, desmarca A y marca B. Al volver a la ventana del operador, la lista de ubicaciones se actualiza. Las siguientes consultas y movimientos ya usan la nueva asignación, incluso con la sesión abierta.
+Abre **Usuarios** en el menú lateral. Crea un operador con una contraseña de al menos 12 caracteres y marca **Almacén A**. Inicia sesión con esa cuenta en otra ventana y registra una entrada. Desde la cuenta de administrador, edita el operador, desmarca A y marca B. Al volver a la ventana del operador, la lista de ubicaciones se actualiza. Las siguientes consultas y movimientos ya usan la nueva asignación, incluso con la sesión abierta.
 
 El rol administrador da acceso a todas las ubicaciones. Las asignaciones individuales se aplican al rol operador.
 

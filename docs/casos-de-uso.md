@@ -22,7 +22,7 @@ La [matriz de permisos](requerimientos.md#matriz-de-permisos) define las ubicaci
 
 1. El administrador registra las ubicaciones.
 2. Registra un producto con su SKU, unidad de medida y categoría.
-3. Crea las cuentas en **Administración → Usuarios**. Define el rol y, para un operador, marca las ubicaciones en las que puede trabajar.
+3. Abre **Usuarios** en el menú lateral y crea las cuentas. Define el rol y, para un operador, marca las ubicaciones en las que puede trabajar.
 
 **Resultado.** Los operadores pueden consultar y operar dentro de su alcance. Si el SKU ya existe, el registro del producto se rechaza.
 

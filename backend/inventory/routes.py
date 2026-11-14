@@ -26,6 +26,18 @@ def options():
 @require_session
 def location_inventory(location_id):
     parse_id(location_id)
+    try:
+        page = int(request.args.get("page", "1"))
+        page_size = int(request.args.get("pageSize", "100"))
+    except ValueError:
+        raise RequestError("Indica una página y un tamaño de página válidos.") from None
+    if not 1 <= page <= 2147483647 or not 1 <= page_size <= 100:
+        raise RequestError("Indica una página y un tamaño de página válidos.")
+
+    search = request.args.get("q", "").strip()
+    if len(search) > 120 or "\0" in search:
+        raise RequestError("Ingresa una búsqueda válida de hasta 120 caracteres.")
+
     kind = request.args.get("kind") or None
     if kind not in (None, "receipt", "opening", "issue", "transfer"):
         raise RequestError("Selecciona un tipo de movimiento válido.")
@@ -42,7 +54,7 @@ def location_inventory(location_id):
         balances = connection.execute("""
             SELECT p.id AS "productId", p.sku, p.name, p.unit, s.quantity::text AS quantity
             FROM stock s JOIN products p ON p.id = s.product_id
-            WHERE s.location_id = %s ORDER BY p.name
+            WHERE s.location_id = %s ORDER BY p.name, p.id
         """, (location_id,)).fetchall()
         movements = connection.execute("""
             SELECT m.id, m.kind, m.movement_date::text AS "movementDate",
@@ -54,12 +66,18 @@ def location_inventory(location_id):
               AND (%s::text IS NULL OR m.kind = %s)
               AND (%s::date IS NULL OR m.movement_date >= %s)
               AND (%s::date IS NULL OR m.movement_date <= %s)
-            ORDER BY m.id DESC LIMIT 101
-        """, (location_id, kind, kind, start_date, start_date, end_date, end_date)).fetchall()
+              AND (%s = '' OR strpos(
+                  lower(concat_ws(' ', p.name, p.sku, u.username, m.reference)),
+                  lower(%s)
+              ) > 0)
+            ORDER BY m.id DESC, d.product_id
+            LIMIT %s OFFSET %s
+        """, (location_id, kind, kind, start_date, start_date, end_date, end_date,
+              search, search, page_size + 1, (page - 1) * page_size)).fetchall()
     for movement in movements:
         movement["recordedAt"] = movement["recordedAt"].isoformat()
     return {
-        "balances": balances, "movements": movements[:100], "hasMore": len(movements) > 100
+        "balances": balances, "movements": movements[:page_size], "hasMore": len(movements) > page_size
     }
 
 

@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { request } from './api';
+import { Pagination, useTablePage } from './Pagination';
+import { matchesSearch } from './search';
 
 const resources = {
   products: {
@@ -60,6 +62,7 @@ function ResourceEditor({ resource, onExpired }) {
   const { title, singular, fields } = resources[resource];
   const endpoint = `/admin/${resource}`;
   const [items, setItems] = useState(null);
+  const [search, setSearch] = useState('');
   const [locations, setLocations] = useState([]);
   const [editing, setEditing] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -68,6 +71,17 @@ function ResourceEditor({ resource, onExpired }) {
   const [formVersion, setFormVersion] = useState(0);
   const formTitle = editing ? `Editar ${singular}` : `Crear ${singular}`;
   const isUsers = resource === 'users';
+  function locationNames(item) {
+    if (item.role === 'admin') return 'Todas';
+    return locations.filter((location) => item.locationIds.includes(location.id))
+      .map((location) => location.name).join(', ') || 'Sin asignar';
+  }
+
+  const matches = (items ?? []).filter((item) => matchesSearch(search, [
+    ...fields.map(({ key }) => item[key]),
+    ...(isUsers ? [item.role === 'admin' ? 'Administrador' : 'Operador', locationNames(item)] : []),
+  ]));
+  const { page, pageCount, setPage, rows } = useTablePage(matches);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -139,25 +153,30 @@ function ResourceEditor({ resource, onExpired }) {
           </fieldset>
         </form>
         <section className="panel" aria-labelledby="resource-title">
-          <div className="panel-heading"><h2 id="resource-title">{title}</h2></div>
+          <h2 id="resource-title" className="visually-hidden">{title}</h2>
+          <label className="table-search">Buscar {title.toLowerCase()}
+            <input type="search" value={search} onChange={(event) => {
+              setSearch(event.target.value);
+              setPage(1);
+            }} />
+          </label>
           {!items && !error && <p className="empty" role="status">Cargando…</p>}
           {items?.length === 0 && <p className="empty">La lista está vacía.</p>}
-          {items?.length > 0 && (
+          {items?.length > 0 && matches.length === 0 && <p className="empty">No hay resultados para esta búsqueda.</p>}
+          {rows.length > 0 && (
             <div className="table-wrap">
               <table>
                 <thead><tr>{fields.map(({ key, label }) => <th key={key}>{label}</th>)}
                   {isUsers && <><th>Rol</th><th>Ubicaciones</th></>}
                   <th>Acción</th></tr></thead>
                 <tbody>
-                  {items.map((item) => (
+                  {rows.map((item) => (
                     <tr key={item.id}>
                       {fields.map(({ key }) => <td key={key}>{item[key]}</td>)}
                       {isUsers && (
                         <>
                           <td>{item.role === 'admin' ? 'Administrador' : 'Operador'}</td>
-                          <td>{item.role === 'admin' ? 'Todas' : locations.filter(
-                            (location) => item.locationIds.includes(location.id),
-                          ).map((location) => location.name).join(', ') || 'Sin asignar'}</td>
+                          <td>{locationNames(item)}</td>
                         </>
                       )}
                       <td><button type="button" className="secondary" disabled={busy} onClick={() => select(item)}
@@ -168,23 +187,17 @@ function ResourceEditor({ resource, onExpired }) {
               </table>
             </div>
           )}
+          <Pagination page={page} pageCount={pageCount} onChange={setPage} />
         </section>
       </div>
     </>
   );
 }
 
-export function Administration({ onExpired }) {
-  const [resource, setResource] = useState('products');
+export function Administration({ resource, onExpired }) {
   return (
     <main className="workspace">
-      <div className="workspace-heading"><h1>Administración</h1></div>
-      <nav className="resource-nav" aria-label="Secciones de administración">
-        {Object.entries(resources).map(([key, { title }]) => (
-          <button key={key} type="button" className={resource === key ? 'primary' : 'secondary'}
-            aria-pressed={resource === key} onClick={() => setResource(key)}>{title}</button>
-        ))}
-      </nav>
+      <div className="workspace-heading"><h1>{resources[resource].title}</h1></div>
       <ResourceEditor key={resource} resource={resource} onExpired={onExpired} />
     </main>
   );
