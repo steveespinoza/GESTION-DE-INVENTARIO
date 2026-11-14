@@ -1,6 +1,6 @@
 # Gestión de Inventario
 
-Estoy desarrollando un Kardex para empresas que necesitan saber cuánto stock tienen en cada ubicación y qué movimientos explican ese saldo. El proyecto parte de un flujo común que puedo adaptar según las necesidades de cada empresa.
+Kardex para empresas que necesitan saber cuánto stock tienen en cada ubicación y qué movimientos explican ese saldo. El proyecto parte de un flujo común que puede adaptarse a cada operación.
 
 ## Primera versión
 
@@ -21,7 +21,7 @@ La primera versión parte de que el saldo del sistema coincide con el inventario
 
 ## Estado
 
-Implementé el primer flujo con React, Flask y PostgreSQL. La demo permite iniciar sesión, registrar una entrada o un saldo inicial y consultar el stock y el historial por ubicación. El catálogo y los usuarios de esta etapa se cargan con datos de demostración. Las salidas, los traslados y las pantallas de administración quedan para las siguientes etapas.
+La demo con React, Flask y PostgreSQL permite registrar entradas, saldos iniciales y salidas, y consultar el stock y el historial por ubicación. El catálogo y las cuentas se cargan con datos de demostración. Los traslados y las pantallas de administración están pendientes.
 
 ![Entrada de 100 metros registrada en el almacén A, con stock e historial actualizados](docs/imagenes/entrada-demo.png)
 
@@ -46,7 +46,9 @@ Set-Location backend
 ..\.venv\Scripts\python.exe -m flask --app inventory run
 ```
 
-Abre `http://127.0.0.1:5000` e inicia sesión como `admin-demo` con la contraseña que elegiste al cargar los datos. Selecciona **Almacén A** y **Cable eléctrico**, registra 100 m y comprueba que el saldo y el historial muestren la entrada. Con `operador-demo` puedes comprobar que solo aparece el almacén B.
+Abre `http://127.0.0.1:5000` e inicia sesión como `admin-demo` con la contraseña que elegiste al cargar los datos. Selecciona **Almacén A** y **Cable eléctrico**. Registra una entrada de 100 m y luego una salida de 30 m. El saldo debe quedar en 70 m y el historial debe mostrar ambos movimientos. Una salida de 71 m debe rechazarse y conservar ese saldo. Con `operador-demo` puedes comprobar que solo aparece el almacén B.
+
+Si ya tienes la base de la demo de entradas, ejecuta `flask --app inventory migrate` con su URL para añadir las salidas y conservar los registros existentes.
 
 ## Pruebas
 
@@ -57,4 +59,4 @@ $env:TEST_DATABASE_URL = 'postgresql://usuario:contraseña@localhost:5432/invent
 ..\.venv\Scripts\python.exe -m pytest -q
 ```
 
-La suite verifica cantidades inválidas, permisos por ubicación, saldos iniciales, historial, entradas simultáneas y reversión de la transacción si falla la actualización del saldo. Las pruebas de integración crean un esquema temporal por caso y lo eliminan al terminar.
+La suite verifica permisos por ubicación, validación de cantidades y consistencia entre saldo e historial. También comprueba que solo una de dos salidas simultáneas de 8 unidades se confirme cuando hay 10 disponibles, y que un fallo al guardar el movimiento revierta el descuento. Las pruebas de integración crean un esquema temporal por caso y lo eliminan al terminar.

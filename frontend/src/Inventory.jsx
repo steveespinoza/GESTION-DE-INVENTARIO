@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { request } from './api';
 
-const movementLabels = { receipt: 'Entrada', opening: 'Saldo inicial' };
+const movementLabels = { receipt: 'Entrada', opening: 'Saldo inicial', issue: 'Salida' };
 const numberFormat = new Intl.NumberFormat('es-PE', { maximumFractionDigits: 3 });
+const variationFormat = new Intl.NumberFormat('es-PE', { maximumFractionDigits: 3, signDisplay: 'always' });
 const dateFormat = new Intl.DateTimeFormat('es-PE', { dateStyle: 'medium', timeZone: 'UTC' });
 const timestampFormat = new Intl.DateTimeFormat('es-PE', { dateStyle: 'short', timeStyle: 'short' });
 
@@ -13,15 +14,19 @@ function localDate() {
   return `${now.getFullYear()}-${month}-${day}`;
 }
 
-function ReceiptForm({ products, actor, busy, onSubmit }) {
+function MovementForm({ products, actor, busy, onSubmit }) {
+  const [kind, setKind] = useState('receipt');
+  const isIssue = kind === 'issue';
+  const action = isIssue ? 'Registrar salida' : 'Registrar entrada';
   return (
-    <form className="panel receipt" onSubmit={onSubmit} aria-labelledby="receipt-title">
-      <h2 id="receipt-title">Registrar entrada</h2>
+    <form className="panel movement-form" onSubmit={onSubmit} aria-labelledby="movement-title">
+      <h2 id="movement-title">Registrar movimiento</h2>
       <fieldset disabled={busy}>
         <label>Tipo de movimiento
-          <select name="kind">
+          <select name="kind" value={kind} onChange={(event) => setKind(event.target.value)}>
             <option value="receipt">Entrada</option>
             {actor.role === 'admin' && <option value="opening">Saldo inicial</option>}
+            <option value="issue">Salida</option>
           </select>
         </label>
         <label>Producto
@@ -37,9 +42,9 @@ function ReceiptForm({ products, actor, busy, onSubmit }) {
           <label>Fecha del movimiento<input type="date" name="movementDate" required defaultValue={localDate()} /></label>
         </div>
         <label>Referencia <span className="muted">(opcional)</span>
-          <input name="reference" maxLength={120} placeholder="Ej. guía de recepción" />
+          <input name="reference" maxLength={120} placeholder={isIssue ? 'Ej. orden de entrega' : 'Ej. guía de recepción'} />
         </label>
-        <button className="primary">{busy ? 'Registrando…' : 'Registrar entrada'}</button>
+        <button className="primary">{busy ? 'Registrando…' : action}</button>
       </fieldset>
     </form>
   );
@@ -83,6 +88,7 @@ function History({ movements, hasMore, onFilter }) {
             <option value="">Todos</option>
             <option value="receipt">Entrada</option>
             <option value="opening">Saldo inicial</option>
+            <option value="issue">Salida</option>
           </select>
         </label>
         <button className="secondary">Filtrar</button>
@@ -97,7 +103,7 @@ function History({ movements, hasMore, onFilter }) {
                   <td>{dateFormat.format(new Date(item.movementDate))}</td>
                   <td><span className="movement-kind">{movementLabels[item.kind]}</span></td>
                   <td>{item.product}</td>
-                  <td className="numeric stock-value">+{numberFormat.format(item.quantity)} <span>{item.unit}</span></td>
+                  <td className={`numeric stock-value${item.kind === 'issue' ? ' outgoing' : ''}`}>{variationFormat.format(item.quantity)} <span>{item.unit}</span></td>
                   <td>{item.actor}</td>
                   <td>{item.reference || '—'}</td>
                   <td>{timestampFormat.format(new Date(item.recordedAt))}</td>
@@ -159,11 +165,12 @@ export function Inventory({ actor, onLogout, onExpired }) {
     event.preventDefault();
     const form = event.currentTarget;
     const values = Object.fromEntries(new FormData(form));
+    const isIssue = values.kind === 'issue';
     setBusy(true);
     setError('');
     setNotice('');
     try {
-      const result = await request('/inventory/receipts', {
+      const result = await request(isIssue ? '/inventory/issues' : '/inventory/receipts', {
         method: 'POST',
         body: {
           ...values,
@@ -174,11 +181,14 @@ export function Inventory({ actor, onLogout, onExpired }) {
       });
       form.elements.quantity.value = '';
       form.elements.reference.value = '';
-      setNotice(`Entrada #${result.id} registrada.`);
+      setNotice(`${movementLabels[values.kind]} #${result.id} ${values.kind === 'opening' ? 'registrado' : 'registrada'}.`);
       setRefresh((value) => value + 1);
     } catch (failure) {
       if (failure.status === 401) onExpired();
-      else setError(failure.message);
+      else {
+        setError(failure.message);
+        if (isIssue && failure.status === 409) setRefresh((value) => value + 1);
+      }
     } finally {
       setBusy(false);
     }
@@ -223,7 +233,7 @@ export function Inventory({ actor, onLogout, onExpired }) {
         {locationId && (
           <div aria-busy={loading}>
             <div className="dashboard">
-              <ReceiptForm products={options.products} actor={actor} busy={busy} onSubmit={register} />
+              <MovementForm products={options.products} actor={actor} busy={busy} onSubmit={register} />
               <Stock balances={inventory?.balances ?? []} />
             </div>
             <History movements={inventory?.movements ?? []} hasMore={inventory?.hasMore} onFilter={applyFilters} />

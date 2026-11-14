@@ -4,7 +4,7 @@ from decimal import Decimal
 
 from .access import require_location
 from .errors import RequestError
-from .receipt_repository import product_exists, save_receipt
+from .movement_repository import decrease_stock, increase_stock, product_exists, save_movement
 
 
 def parse_quantity(value):
@@ -16,11 +16,9 @@ def parse_quantity(value):
     return quantity
 
 
-def register_receipt(connection, actor, *, product_id, location_id, kind, quantity,
-                     movement_date, reference):
+def register_movement(connection, actor, *, product_id, location_id, kind, quantity,
+                      movement_date, reference):
     require_location(connection, actor, location_id)
-    if kind not in ("receipt", "opening"):
-        raise RequestError("Selecciona un tipo de entrada válido.")
     if kind == "opening" and actor["role"] != "admin":
         raise RequestError("Solo un administrador puede registrar el saldo inicial.", 403)
     quantity = parse_quantity(quantity)
@@ -33,8 +31,22 @@ def register_receipt(connection, actor, *, product_id, location_id, kind, quanti
     if not product_exists(connection, product_id):
         raise RequestError("El producto seleccionado no existe.", 404)
 
-    return save_receipt(
+    if kind == "issue":
+        stock = decrease_stock(connection, product_id, location_id, quantity)
+        if stock is None:
+            raise RequestError("Stock insuficiente para registrar la salida.", 409)
+        variation = -quantity
+    else:
+        stock = increase_stock(connection, product_id, location_id, quantity)
+        variation = quantity
+
+    movement = save_movement(
         connection, actor_id=actor["id"], product_id=product_id, location_id=location_id,
-        kind=kind, quantity=quantity, movement_date=movement_date,
+        kind=kind, quantity=variation, movement_date=movement_date,
         reference=reference.strip() or None,
     )
+    return {
+        "id": movement["id"],
+        "recordedAt": movement["recorded_at"].isoformat(),
+        "balance": str(stock["quantity"]),
+    }
