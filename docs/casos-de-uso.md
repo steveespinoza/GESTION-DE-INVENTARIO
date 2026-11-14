@@ -28,11 +28,11 @@ La [matriz de permisos](requerimientos.md#matriz-de-permisos) define las ubicaci
 
 ## CU-03. Registrar una entrada
 
-1. El actor selecciona producto y ubicación e indica la cantidad recibida y los datos del movimiento.
+1. El actor selecciona producto y ubicación e indica la cantidad recibida y la fecha del movimiento. Puede añadir una referencia.
 2. El sistema valida el acceso y la cantidad.
-3. El sistema incrementa el saldo y registra la entrada con el actor de la sesión.
+3. El sistema incrementa el saldo y registra la entrada con el actor de la sesión y la fecha y hora de registro.
 
-**Resultado.** La cantidad aparece en el stock y la entrada en el historial. El saldo inicial sigue este flujo con una identificación propia.
+**Resultado.** La cantidad aparece en el stock y la entrada en el historial. El administrador puede seguir este flujo y seleccionar **Saldo inicial**.
 
 ## CU-04. Registrar una salida
 
