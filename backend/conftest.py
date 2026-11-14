@@ -8,11 +8,13 @@ from psycopg.conninfo import make_conninfo
 
 from inventory import create_app
 
-DEMO_PASSWORD = "inventario-prueba-local"
+@pytest.fixture
+def demo_password():
+    return "inventario-prueba-local"
 
 
 @pytest.fixture
-def app():
+def app(demo_password):
     database_url = os.environ.get("TEST_DATABASE_URL")
     if not database_url:
         message = "Configura TEST_DATABASE_URL para ejecutar las pruebas de PostgreSQL."
@@ -31,7 +33,7 @@ def app():
                 "TESTING": True,
             })
             runner = app.test_cli_runner()
-            for command in (["migrate"], ["migrate"], ["seed-demo", "--password", DEMO_PASSWORD]):
+            for command in (["migrate"], ["migrate"], ["seed-demo", "--password", demo_password]):
                 result = runner.invoke(args=command)
                 assert result.exit_code == 0, result.output or repr(result.exception)
             yield app
@@ -40,8 +42,8 @@ def app():
 
 
 @pytest.fixture
-def login():
+def login(demo_password):
     def sign_in(client, username="admin-demo"):
-        result = client.post("/api/session", json={"username": username, "password": DEMO_PASSWORD})
+        result = client.post("/api/session", json={"username": username, "password": demo_password})
         assert result.status_code == 200
     return sign_in
